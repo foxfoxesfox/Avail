@@ -1,0 +1,41 @@
+# --- Secrets: never commit ---
+# Supabase URL/keys and the database password live in .env.local
+.env*
+!.env.example
+*.pem
+*.key
+
+# --- Dependencies and build output (rebuilt by npm install / npm run build) ---
+/node_modules
+/.next/
+/out/
+/build
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Hosting / service CLIs (local state and tokens) ---
+.vercel
+supabase/.temp/
+supabase/.branches/
+
+# --- AI agent tooling (local to this machine) ---
+.claude/
+.mcp.json
+.impeccable/
+graphify-out/
+
+# --- Obsidian per-device settings (the notes in docs/ are committed) ---
+docs/.obsidian/
+.trash/
+
+# --- Editors and OS clutter ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Logs ---
+*.log
+npm-debug.log*
