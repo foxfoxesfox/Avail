@@ -1,13 +1,16 @@
-// Placeholder until slice 2 (create a schedule) lands.
+import Link from "next/link";
+
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-      <h1 className="text-4xl font-semibold tracking-tight">Avail</h1>
-      <p className="max-w-md text-balance text-zinc-600 dark:text-zinc-400">
-        Share one link, see when your team is free, and send the chosen time to
-        everyone&apos;s calendar.
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-5 py-16">
+      <h1 className="text-[2.5rem] leading-[1.05] font-bold tracking-[-0.03em] text-balance">When is everyone free?</h1>
+      <p className="mt-3 max-w-md text-lg text-ink-soft">
+        Share one link. Everyone marks their hours. See the best times at a glance.
       </p>
-      <p className="text-sm text-zinc-500">Coming soon.</p>
+      <Link href="/new"
+        className="mt-8 self-start rounded-full bg-indigo px-7 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep">
+        Create a schedule
+      </Link>
     </main>
   );
 }
