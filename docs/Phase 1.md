@@ -29,5 +29,5 @@ Each slice ends with something you can open and try. Tick it off when it works f
 
 ## Resume here (Oct 23)
 - Slice 2 done and reviewed (ship). Round dots (`circle` in `.dot-lines` / `.dot-grid`) and the `indigo-wash-hover` token are fixed in code.
-- Left over (small): in `.impeccable/design.json`, drop the "renders vertical ticks" note on dot-lines, use `circle` in the `.ds-dotgrid` css, and use `var(--color-indigo-wash-hover)` in the quiet-button hover; glance at the people field dots in the browser.
-- Then: commit + push (Vercel deploys), delete test schedules ("RLS test", two "x") in Supabase, start slice 3 (fill in availability on the dot grid).
+- Design record tidied (Oct 24): `.impeccable/design.json` and `DESIGN.md` match the code; dots checked in the browser.
+- Then: push (Vercel deploys), delete test schedules ("RLS test", two "x") in Supabase, start slice 3 (fill in availability on the dot grid).

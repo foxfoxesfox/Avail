@@ -3,6 +3,7 @@
 ## Project
 - Plan and progress live in `docs/` (an Obsidian vault): start at `docs/Home.md`, build slices in `docs/Phase 1.md`. Tick slices off there as they land.
 - Stack: Next.js (App Router, `src/`) + TypeScript + Tailwind, Supabase, Vercel.
+- Never `git commit` or `git push`: the user does both themselves. Leave changes uncommitted.
 
 ## graphify
 

@@ -11,6 +11,7 @@ colors:
   indigo: "#2d3e8c"
   indigo-deep: "#22306e"
   indigo-wash: "#e6e9f4"
+  indigo-wash-hover: "#d7dcee"
   vermilion: "#c8341f"
   seal: "#e2412b"
 typography:
