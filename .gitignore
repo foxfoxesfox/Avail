@@ -4,6 +4,7 @@
 !.env.example
 *.pem
 *.key
+signing_keys.json
 
 # --- Dependencies and build output (rebuilt by npm install / npm run build) ---
 /node_modules
@@ -21,6 +22,10 @@ supabase/.branches/
 
 # --- AI agent tooling (local to this machine) ---
 .claude/
+CLAUDE.md
+AGENTS.md
+DESIGN.md
+PRODUCT.md
 .mcp.json
 .impeccable/
 graphify-out/
