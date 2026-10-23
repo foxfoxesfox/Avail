@@ -46,7 +46,12 @@ html {
   background-attachment: local;
 }
 
-/* The planner's dot grid, used for page-level placeholders and later the time grid. */
+/* "If needed": indigo hatching, so the state reads without relying on colour alone. */
+.if-needed {
+  background: repeating-linear-gradient(135deg, var(--color-indigo) 0 2px, var(--color-indigo-wash) 2px 7px);
+}
+
+/* The planner's dot grid, used for page-level placeholders and the time grid. */
 .dot-grid {
   background-color: var(--color-sheet);
   background-image: radial-gradient(circle, var(--color-dot) 1.1px, transparent 1.2px);

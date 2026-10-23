@@ -23,7 +23,7 @@ export type Schedule = {
   deadline: string | null;
   showNames: boolean;
   createdAt: string;
-  participants: { id: string; name: string }[];
+  participants: { id: string; name: string; hasPin: boolean }[];
 };
 
 export async function getSchedule(shareId: string): Promise<Schedule | null> {
