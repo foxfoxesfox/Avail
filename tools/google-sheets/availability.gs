@@ -127,6 +127,7 @@ function buildTab(sh, cfg, names, marks) {
     .setFontColor(MUTED).setFontSize(10);
   const list = [];
   for (let i = 0; i < listRows; i++) list.push([i + 1, names[i] || '']);
+  sh.getRange(L.listTop, 2, listRows, 1).setNumberFormat('@');
   sh.getRange(L.listTop, 1, listRows, 2).setValues(list).setFontSize(12)
     .setBorder(true, true, true, true, true, true, LINE, SpreadsheetApp.BorderStyle.SOLID);
   sh.getRange(L.listTop, 1, listRows, 1).setFontColor(MUTED).setHorizontalAlignment('right');
@@ -140,6 +141,7 @@ function buildTab(sh, cfg, names, marks) {
 
     sh.getRange(top, 1, 2, 2).merge().setValue('Week of ' + fmt(days[0], 'MMM d'))
       .setBackground(HEAD).setFontColor('#ffffff').setFontWeight('bold').setFontSize(12).setHorizontalAlignment('center');
+    sh.getRange(top, 3, 1, width).setNumberFormat('@'); // plain text: otherwise Sheets stores the header as a date
     days.forEach((d, i) => sh.getRange(top, 3 + i * nSlots, 1, nSlots).merge().setValue(fmt(d, 'EEEE, MMMM d, yyyy')));
     sh.getRange(top, 3, 1, width).setBackground(HEAD).setFontColor('#ffffff').setFontWeight('bold').setFontSize(13).setHorizontalAlignment('center');
     sh.getRange(top + 1, 3, 1, width)
@@ -154,6 +156,7 @@ function buildTab(sh, cfg, names, marks) {
       const kept = (marks[name.toLowerCase()] || {})[w] || [];
       rows.push([i + 1, name || '(add names in the Members list)'].concat(Array.from({ length: width }, (_, c) => kept[c] || '')));
     }
+    sh.getRange(firstPerson, 2, weekRows, 1 + width).setNumberFormat('@');
     sh.getRange(firstPerson, 1, weekRows, 2 + width).setValues(rows);
     sh.getRange(firstPerson, 1, weekRows, 2).setFontSize(12);
     sh.getRange(firstPerson, 1, weekRows, 1).setFontColor(MUTED).setHorizontalAlignment('right');
@@ -173,6 +176,7 @@ function buildTab(sh, cfg, names, marks) {
     sh.getRange(att, 1, 1, 2).merge().setValue('Expected attendance').setFontWeight('bold').setFontSize(11).setBackground(SUB);
     sh.getRange(att, 3, 1, width)
       .setFormulaR1C1('=COUNTIF(R[-' + weekRows + ']C:R[-1]C,"x")') // COUNTIF ignores case, so x and X both count
+      .setNumberFormat('0') // counts, never dates
       .setFontWeight('bold').setFontSize(12).setHorizontalAlignment('center');
     sh.getRange(att, 1, 1, 2 + width).setBorder(true, null, null, null, null, null, HEAD, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     sh.setRowHeight(att, 30);
