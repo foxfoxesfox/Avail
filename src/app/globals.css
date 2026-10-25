@@ -51,6 +51,12 @@ html {
   background: repeating-linear-gradient(135deg, var(--color-indigo) 0 2px, var(--color-indigo-wash) 2px 7px);
 }
 
+/* Group heat: four flat steps, each with a text colour that keeps counts at 4.5:1 or better. */
+.heat-1 { background: var(--color-indigo-wash); color: var(--color-ink); }
+.heat-2 { background: color-mix(in srgb, var(--color-indigo) 30%, white); color: var(--color-ink); }
+.heat-3 { background: color-mix(in srgb, var(--color-indigo) 55%, white); color: var(--color-ink); }
+.heat-4 { background: var(--color-indigo); color: #fff; }
+
 /* The planner's dot grid, used for page-level placeholders and the time grid. */
 .dot-grid {
   background-color: var(--color-sheet);

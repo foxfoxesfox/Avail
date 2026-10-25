@@ -11,7 +11,7 @@ Team availability web app: create a schedule, share one link, everyone marks whe
 > Open `docs/` in Obsidian ("Open folder as vault") to browse these notes with links and graph view. The notes are plain Markdown, so they also read fine on GitHub.
 
 ## Notes
-- [[Plan]]: decisions, phases, expected problems, tech stack, answered questions
+- [[Plan]]: competitors and lessons, decisions, phases, expected problems, tech stack, answered questions
 - [[Phase 1]]: build slices and progress
 
 ## Outside the vault

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getSchedule } from "@/lib/supabase";
 import { ScheduleSummary } from "../summary";
-import { Availability } from "./availability";
+import { Views } from "./views";
 
 export const metadata: Metadata = { title: "Schedule", robots: { index: false, follow: false } };
 
@@ -20,12 +20,12 @@ async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
         </summary>
         <div className="mt-3"><ScheduleSummary s={s} showPeople={s.showNames} /></div>
       </details>
-      <Availability s={s} />
+      <Views s={s} />
     </>
   );
 }
 
-// Members land here: pick a name, then paint when they're free.
+// Members land here: paint their own times, or see everyone's.
 export default function SharePage({ params }: PageProps<"/s/[id]">) {
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pt-8 pb-16">

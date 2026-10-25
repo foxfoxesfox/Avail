@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { getScheduleAsOrganizer } from "@/lib/supabase";
 import { CopyLink } from "../../../copy-link";
 import { ScheduleSummary } from "../../../summary";
+import { GroupGrid } from "../../group";
 
 export const metadata: Metadata = { title: "Organizer", robots: { index: false, follow: false } };
 
@@ -37,6 +38,8 @@ async function Content({ params }: { params: PageProps<"/s/[id]/manage/[token]">
         </p>
         <CopyLink path={`/s/${s.shareId}/manage/${token}`} label="Organizer link" action="Copy organizer link" quiet />
       </section>
+
+      <GroupGrid s={s} token={token} />
 
       <section className="mt-10">
         <h2 className="mb-3 text-lg font-bold">Details</h2>

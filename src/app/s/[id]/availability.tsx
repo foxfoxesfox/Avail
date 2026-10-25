@@ -22,8 +22,8 @@ function remember(shareId: string, me: Me | null) {
   window.dispatchEvent(new StorageEvent("storage"));
 }
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const dayOf = (iso: string) => new Date(iso + "T00:00:00Z");
+export const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const dayOf = (iso: string) => new Date(iso + "T00:00:00Z");
 
 const MODES: { state: State; label: string }[] = [
   { state: FREE, label: "Free" },
@@ -259,7 +259,7 @@ function Grid({ s, me, name, hadPin, onLeave }: { s: Schedule; me: Me; name: str
 }
 
 // Authored arrow, one stroke weight, so the week buttons don't rely on font glyphs.
-function WeekButton({ dir, disabled, onClick }: { dir: "prev" | "next"; disabled: boolean; onClick: () => void }) {
+export function WeekButton({ dir, disabled, onClick }: { dir: "prev" | "next"; disabled: boolean; onClick: () => void }) {
   return (
     <button type="button" disabled={disabled} onClick={onClick} aria-label={dir === "prev" ? "Previous week" : "Next week"}
       className="grid size-10 shrink-0 place-items-center rounded-full bg-indigo-wash text-indigo hover:bg-indigo-wash-hover disabled:opacity-40">

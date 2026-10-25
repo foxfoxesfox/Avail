@@ -44,3 +44,20 @@ export async function saveMine(
   if (error) console.error("save_availability failed", error);
   return { ok: !error };
 }
+
+export type Totals = {
+  people: number;
+  replied: number;
+  pending: string[] | null; // null when names are hidden from this viewer
+  slots: [string, number, number, number, string[] | null, string[] | null][]; // day, minute, free, if needed, names…
+};
+
+/** Group totals per slot. Pass the organizer token to see names even when the schedule hides them. */
+export async function getTotals(shareId: string, token: string | null): Promise<Totals | null> {
+  if (typeof shareId !== "string" || shareId.length > 32 || (token !== null && (typeof token !== "string" || token.length > 64))) {
+    throw new Error("Invalid request");
+  }
+  const { data, error } = await supabase.rpc("get_totals", { p_share_id: shareId, p_token: token });
+  if (error) throw error;
+  return data;
+}

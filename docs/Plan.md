@@ -10,17 +10,34 @@ Back to [[Home]].
 
 A web app (installable to the home screen) where an organizer creates a schedule, shares one link, members mark when they're free, and confirmed sessions land in everyone's own calendar.
 
-## 1. Where it fits among existing apps
+## 1. Competitors and lessons
+What each app does well (we borrow it), where it falls short (we avoid it), and how Avail does better. Our own ideas that none of them have are in [[#4. Ideas no current app does well]].
 
-| App | Good at | Missing for us |
+| App | We borrow | It gets wrong | Avail does better |
+|---|---|---|---|
+| **When2meet** | Paint-a-grid, totals at a glance, no sign-up | Clunky on phones, dated, nothing reaches your calendar, start from scratch each time, no notifications | Phone-first grid, "If needed" answers, calendar feeds, reusable teams and templates, optional PIN per row |
+| **Crab Fit** | Same no-login grid, cleaner, open source | One-off polls only: no calendar output, reuse or notifications | Schedules belong to teams you reuse; confirmed times reach everyone's calendar |
+| **Doodle** | "If need be" answers; polls of proposed times | Ads and paywalls on the free tier; team reuse is paid; no free-time grid | No ads, complete free tier; grid **and** polls (Phase 3) |
+| **Rallly** | Clean, open-source, ad-free polls | Polls only: no weekly grid, no teams, no calendar feed | All three schedule types, teams and calendars |
+| **Calendly / Google "find a time"** | Strong calendar integration | Everyone needs the same tool or an account; built for 1-to-1 bookings | Guests need no account; built for groups; works with any calendar |
+| **TimeTree** | Join by link; comments on each event; a shared calendar the group keeps using; activity feed; colour per calendar | Ads and a Premium paywall ($4.49/mo); invite links expire after 7 days; no "when is everyone free?" grid | No ads; long-lived links you can reset if leaked; the grid is the core |
+| **Google Sheet** (where this started) | Familiar grid, an x per hour, the "Expected attendance" row | Manual setup, hard on phones, no notifications, rows break when people join or leave | All automatic; the improved Sheets script (Members list) stays as a fallback |
+
+**Our angle:** one tool that combines the three schedule types, reusable teams, "key people must attend" suggestions, and calendar, email, push and Telegram notifications, with no ads.
+
+**Borrowed features and where they land**
+
+| Takeaway | From | When |
 |---|---|---|
-| When2meet / Crab Fit | Fast grid, no login | Ugly on phones, no calendar output, no reuse, no notifications |
-| Doodle | Polls of proposed times, "if need be" | Free tier full of ads, no free-time grid, team reuse is paid |
-| Rallly | Clean open-source polls | Polls only, no weekly grid, no team groups |
-| Calendly / Google "find a time" | Calendar integration | Everyone needs the same tool or an account |
-| Your Google Sheet | Familiar, flexible | Manual setup, no notifications, hard to use on phones |
-
-**Our angle:** one tool that combines the three schedule types, reusable teams, "key people must attend" suggestions, and calendar, email, push and Telegram notifications.
+| One share link, no account to join | When2meet, TimeTree | Done (slice 2) |
+| Per-person notification choices at join time | TimeTree | Slice 7, Phase 2 |
+| Comment thread on each **confirmed session** (agenda, "running late", room change) | TimeTree | Phase 2 |
+| **Team page**: every confirmed session across a team's schedules, one calendar feed per team | TimeTree | Phase 2 (teams) |
+| Activity list on the organizer page, plus the "someone updated" digest | TimeTree | Phase 2 |
+| Colour per team or project on the team page and in feeds | TimeTree | Phase 2 |
+| Busy-time auto-fill from Google/Microsoft calendars | Calendly, TimeTree | Phase 3 |
+| Organizer can **reset** a leaked share link (instead of links that expire) | TimeTree (inverted) | Slice 8 |
+| Proposed-options polls with yes / maybe / no | Doodle, Rallly | Phase 3 |
 
 ## 2. Decisions made
 
@@ -43,6 +60,7 @@ A web app (installable to the home screen) where an organizer creates a schedule
 | Visibility | Organizer chooses per schedule: everyone sees names, or members see only counts |
 | Extras chosen | Teams/groups, templates and duplicate, notes and comments, location or video link, CSV/Sheet export, change history and undo |
 | Budget | Free tier; launch small and add features in phases |
+| Example and demo data | Generic names only (Alex, Sam, Priya, Jordan, Chris, Mei Lin) in placeholders, tests, docs, templates and demo schedules; never real team members' names or course codes |
 
 ## 3. Phases
 
@@ -74,7 +92,7 @@ A web app (installable to the home screen) where an organizer creates a schedule
 - WhatsApp only if there's demand, since its business API is paid per message
 
 ## 4. Ideas no current app does well
-- **"Who's blocking" hints:** "7pm Tue has 5/6 — only Jiahui is busy." The organizer can ask that one person instead of re-polling everyone.
+- **"Who's blocking" hints:** "7pm Tue has 5/6 — only Sam is busy." The organizer can ask that one person instead of re-polling everyone.
 - **Quorum alerts:** notify the organizer the moment a slot has all key members and enough people.
 - **Copy last week:** members reuse their previous answers with one tap, which suits recurring team schedules.
 - **Sheet import:** paste an existing availability sheet to migrate in one step.

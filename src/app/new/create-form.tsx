@@ -176,7 +176,7 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
 
         <div>
           <label htmlFor="members" className={labelCls}>People · one per line</label>
-          <textarea id="members" name="members" rows={6} defaultValue={v("members")} placeholder={"Aly\nJiahui\nNiki"}
+          <textarea id="members" name="members" rows={6} defaultValue={v("members")} placeholder={"Alex\nSam\nPriya"}
             aria-invalid={!!e.members} aria-describedby="members-err"
             className={`${field} dot-lines resize-y leading-[1.75rem]`} />
           <Err id="members-err" msg={e.members} />
