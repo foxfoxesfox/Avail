@@ -7,25 +7,42 @@ import { groupWeeks, slotKey, slotMinutes, weekColumns } from "@/lib/grid";
 import { listDates } from "@/lib/schedule-form";
 import { getTotals, type Totals } from "./actions";
 import { DAY_NAMES, WeekButton, dayOf } from "./availability";
+import { inSession, sessionOutline } from "../sessions";
 
 // shortcut: polls every 10 s instead of Supabase Realtime (tables are locked to anon); move to Realtime broadcast if traffic grows.
 const POLL_MS = 10_000;
 
 type Slot = { free: number; ifn: number; fn: string[] | null; inn: string[] | null };
 
-// Share of people free (if-needed counts half) → one of four flat heat steps.
-const STEPS = [
-  { cls: "heat-1", label: "A few" },
-  { cls: "heat-2", label: "About half" },
-  { cls: "heat-3", label: "Most" },
-  { cls: "heat-4", label: "Nearly everyone" },
-];
+// Share of people free (if-needed counts half) → one of four flat heat steps; "everyone free" gets its own.
+const STEPS = ["heat-1", "heat-2", "heat-3", "heat-4"];
 const step = (share: number) => (share <= 0 ? -1 : share <= 0.25 ? 0 : share <= 0.5 ? 1 : share < 0.75 ? 2 : 3);
 
-/** Everyone's availability as a heat grid: darker indigo = more people free. Tap a slot to see who. */
-export function GroupGrid({ s, token = null }: { s: Schedule; token?: string | null }) {
+/** Group totals for a schedule, refreshed every few seconds while the page is visible. */
+export function useTotals(shareId: string, token: string | null) {
   const [data, setData] = useState<Totals | null>(null);
   const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const fetchNow = () => getTotals(shareId, token).then((d) => alive && (setData(d), setFailed(false)), () => alive && setFailed(true));
+    // Always load once; after that, only refresh while the page is visible (and again when it comes back).
+    const tick = () => document.visibilityState === "visible" && fetchNow();
+    fetchNow();
+    const t = setInterval(tick, POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => { alive = false; clearInterval(t); document.removeEventListener("visibilitychange", tick); };
+  }, [shareId, token]);
+  return { data, failed };
+}
+
+/** Member view: fetches its own totals (names only if the organizer allows). */
+export function GroupLive({ s }: { s: Schedule }) {
+  const { data, failed } = useTotals(s.shareId, null);
+  return <GroupGrid s={s} data={data} failed={failed} />;
+}
+
+/** Everyone's availability as a heat grid: darker indigo = more people free. Tap a slot to see who. */
+export function GroupGrid({ s, data, failed }: { s: Schedule; data: Totals | null; failed: boolean }) {
   const [week, setWeek] = useState(0);
   const [sel, setSel] = useState<string | null>(null);
   const detail = useRef<HTMLDivElement>(null);
@@ -36,18 +53,6 @@ export function GroupGrid({ s, token = null }: { s: Schedule; token?: string | n
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     detail.current?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
   }, [sel]);
-
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      if (document.visibilityState !== "visible") return;
-      getTotals(s.shareId, token).then((d) => alive && (setData(d), setFailed(false)), () => alive && setFailed(true));
-    };
-    load();
-    const t = setInterval(load, POLL_MS);
-    document.addEventListener("visibilitychange", load);
-    return () => { alive = false; clearInterval(t); document.removeEventListener("visibilitychange", load); };
-  }, [s.shareId, token]);
 
   if (!data) {
     return failed
@@ -111,12 +116,14 @@ export function GroupGrid({ s, token = null }: { s: Schedule; token?: string | n
                 const c = slots.get(k);
                 const free = c?.free ?? 0, ifn = c?.ifn ?? 0;
                 const st = step((free + ifn / 2) / people);
+                const all = data.people > 0 && free === data.people;
                 return (
                   <td key={k} className="border-l border-rule p-0">
                     <button type="button" onClick={() => setSel(sel === k ? null : k)} aria-pressed={sel === k}
-                      aria-label={`${label(date, m)}: ${free} free${ifn ? `, ${ifn} if needed` : ""}`}
-                      className={`block w-full ${rowH} text-xs font-bold tabular-nums ${st < 0 ? "dot-grid" : STEPS[st].cls} ${sel === k ? "outline-2 -outline-offset-2 outline-ink" : ""}`}>
-                      {free ? free : null}{ifn ? <span className="font-normal">+{ifn}</span> : null}
+                      aria-label={`${label(date, m)}: ${free} free${ifn ? `, ${ifn} if needed` : ""}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}`}
+                      className={`block w-full ${rowH} text-xs font-bold tabular-nums ${all ? "heat-all" : st < 0 ? "dot-grid" : STEPS[st]} ${sel === k ? "outline-2 -outline-offset-2 outline-ink" : ""}`}
+                      style={{ boxShadow: sessionOutline(s.sessions, date, m, s.slotMinutes) }}>
+                      {all ? "All" : <>{free ? free : null}{ifn ? <span className="font-normal">+{ifn}</span> : null}</>}
                     </button>
                   </td>
                 );
@@ -130,13 +137,17 @@ export function GroupGrid({ s, token = null }: { s: Schedule; token?: string | n
       ) : (
         <div className="mt-3 text-xs text-ink-soft">
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5" aria-label="Key">
-            {STEPS.map((x) => (
-              <li key={x.cls} className="flex items-center gap-1.5">
-                <span aria-hidden className={`size-3.5 rounded-sm border border-rule ${x.cls}`} />{x.label}
-              </li>
-            ))}
+            <li className="flex items-center gap-1.5">
+              Fewer
+              {STEPS.map((c) => <span key={c} aria-hidden className={`size-3.5 rounded-sm border border-rule ${c}`} />)}
+              More
+            </li>
+            <li className="flex items-center gap-1.5"><span aria-hidden className="heat-all size-3.5 rounded-sm" /><b className="text-ink">All</b> everyone free</li>
             <li className="flex items-center gap-1.5"><b className="text-ink">3</b> people free</li>
             <li className="flex items-center gap-1.5"><span className="text-ink">+1</span> if needed</li>
+            {s.sessions.length > 0 && (
+              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3.5 rounded-sm bg-sheet outline-2 -outline-offset-2 outline-seal" />Confirmed session</li>
+            )}
           </ul>
           <p className="mt-1.5">Tap a slot to see who. Updates every few seconds.</p>
         </div>
@@ -153,6 +164,19 @@ export function GroupGrid({ s, token = null }: { s: Schedule; token?: string | n
               <dl className="mt-1 grid grid-cols-[6rem_1fr] gap-y-1">
                 <dt className="text-ink-soft">Free</dt><dd>{picked.fn?.length ? picked.fn.join(", ") : "Nobody yet"}</dd>
                 <dt className="text-ink-soft">If needed</dt><dd>{picked.inn?.length ? picked.inn.join(", ") : "Nobody"}</dd>
+                {(() => {
+                  // Everyone not marked free or if-needed here: busy if they replied, otherwise no reply yet.
+                  const avail = new Set([...(picked.fn ?? []), ...(picked.inn ?? [])]);
+                  const pending = new Set(data.pending ?? []);
+                  const out = s.participants.map((p) => p.name).filter((n) => !avail.has(n));
+                  const busy = out.filter((n) => !pending.has(n)), noReply = out.filter((n) => pending.has(n));
+                  return (
+                    <>
+                      <dt className="text-ink-soft">Not free</dt><dd className="font-medium">{busy.length ? busy.join(", ") : "Nobody"}</dd>
+                      {noReply.length > 0 && <><dt className="text-ink-soft">No reply</dt><dd>{noReply.join(", ")}</dd></>}
+                    </>
+                  );
+                })()}
               </dl>
             )}
           </div>

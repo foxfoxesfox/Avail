@@ -56,6 +56,8 @@ html {
 .heat-2 { background: color-mix(in srgb, var(--color-indigo) 30%, white); color: var(--color-ink); }
 .heat-3 { background: color-mix(in srgb, var(--color-indigo) 55%, white); color: var(--color-ink); }
 .heat-4 { background: var(--color-indigo); color: #fff; }
+/* Everyone free: the deepest indigo plus a white inner ring, so it never reads as "nearly everyone". */
+.heat-all { background: var(--color-indigo-deep); color: #fff; box-shadow: inset 0 0 0 2px #fff; }
 
 /* The planner's dot grid, used for page-level placeholders and the time grid. */
 .dot-grid {

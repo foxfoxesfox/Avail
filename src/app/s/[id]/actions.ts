@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { supabase } from "@/lib/supabase";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -24,6 +25,7 @@ export async function setPin(shareId: string, pid: string, pin: string): Promise
   checkMember(shareId, pid, pin);
   const { data, error } = await supabase.rpc("set_pin", { p_share_id: shareId, p_participant: pid, p_pin: pin });
   if (error) throw error;
+  refresh(); // so the name list knows this person now has a PIN
   return data;
 }
 

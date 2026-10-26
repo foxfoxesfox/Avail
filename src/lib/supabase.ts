@@ -23,7 +23,18 @@ export type Schedule = {
   deadline: string | null;
   showNames: boolean;
   createdAt: string;
-  participants: { id: string; name: string; hasPin: boolean }[];
+  participants: { id: string; name: string; hasPin: boolean; isKey: boolean }[];
+  sessions: Session[];
+};
+
+export type Session = {
+  id: string;
+  day: string;
+  startMin: number;
+  endMin: number;
+  location: string | null;
+  link: string | null;
+  notes: string | null;
 };
 
 export async function getSchedule(shareId: string): Promise<Schedule | null> {

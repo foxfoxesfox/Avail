@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { getSchedule } from "@/lib/supabase";
 import { ScheduleSummary } from "../summary";
 import { Views } from "./views";
+import { SessionList } from "../sessions";
 
 export const metadata: Metadata = { title: "Schedule", robots: { index: false, follow: false } };
 
@@ -20,6 +21,7 @@ async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
         </summary>
         <div className="mt-3"><ScheduleSummary s={s} showPeople={s.showNames} /></div>
       </details>
+      <SessionList sessions={s.sessions} />
       <Views s={s} />
     </>
   );

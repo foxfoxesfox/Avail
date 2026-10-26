@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { getScheduleAsOrganizer } from "@/lib/supabase";
 import { CopyLink } from "../../../copy-link";
 import { ScheduleSummary } from "../../../summary";
-import { GroupGrid } from "../../group";
+import { Board } from "./board";
+import { Hanko } from "../../../sessions";
+import { RememberOrganizer } from "../../../../my-schedules";
 
 export const metadata: Metadata = { title: "Organizer", robots: { index: false, follow: false } };
 
@@ -20,9 +22,8 @@ async function Content({ params }: { params: PageProps<"/s/[id]/manage/[token]">
           <h1 className="text-[1.875rem] leading-tight font-bold tracking-[-0.02em] text-balance">{s.title}</h1>
           <p className="mt-1 text-ink-soft">Schedule created. Send the share link to everyone.</p>
         </div>
-        <span aria-hidden className="grid size-16 shrink-0 -rotate-12 place-items-center rounded-full border-[3px] border-seal text-xs font-bold tracking-[0.08em] text-seal">
-          AVAIL
-        </span>
+        {/* One hanko per screen: once a session is confirmed, the seal moves to it. */}
+        {s.sessions.length === 0 && <Hanko />}
       </div>
 
       <section className="mt-8">
@@ -34,12 +35,13 @@ async function Content({ params }: { params: PageProps<"/s/[id]/manage/[token]">
       <section className="mt-8">
         <h2 className="mb-1 text-lg font-bold">Your organizer link</h2>
         <p className="mb-3 text-sm text-ink-soft">
-          Keep this private and save it: it&apos;s the only way back to this page until accounts arrive. Anyone with it can manage the schedule.
+          Keep this private: anyone with it can manage the schedule. This browser remembers it under &ldquo;Your schedules&rdquo; on the home page; save it somewhere too, as it can&apos;t be recovered if lost.
         </p>
         <CopyLink path={`/s/${s.shareId}/manage/${token}`} label="Organizer link" action="Copy organizer link" quiet />
       </section>
 
-      <GroupGrid s={s} token={token} />
+      <Board s={s} token={token} />
+      <RememberOrganizer shareId={s.shareId} token={token} title={s.title} />
 
       <section className="mt-10">
         <h2 className="mb-3 text-lg font-bold">Details</h2>

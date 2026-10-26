@@ -6,6 +6,7 @@ import { formatDateRange, formatHour } from "@/lib/format";
 import { FREE, IF_NEEDED, fromRows, groupWeeks, slotKey, slotMinutes, toRows, weekColumns, type State } from "@/lib/grid";
 import { listDates } from "@/lib/schedule-form";
 import { loadMine, saveMine, setPin } from "./actions";
+import { inSession, sessionOutline } from "../sessions";
 
 type Me = { pid: string; pin: string | null };
 
@@ -49,9 +50,12 @@ function NamePicker({ s, onPick }: { s: Schedule; onPick: (me: Me) => void }) {
   async function choose(id: string, pin: string | null) {
     setBusy(true);
     setError("");
-    const rows = await loadMine(s.shareId, id, pin).catch(() => null);
+    const rows = await loadMine(s.shareId, id, pin).catch(() => undefined);
     setBusy(false);
-    if (rows === null) setError(pin ? "That PIN doesn't match." : "Couldn't open your row. Try again.");
+    if (rows === undefined) setError("Couldn't reach the server. Check your connection and try again.");
+    // No rows without a PIN means this name has one (the page may predate it being set): ask for it.
+    else if (rows === null && !pin) setAsking(s.participants.find((p) => p.id === id) ?? null);
+    else if (rows === null) setError("That PIN doesn't match.");
     else onPick({ pid: id, pin });
   }
 
@@ -149,10 +153,11 @@ function Grid({ s, me, name, hadPin, onLeave }: { s: Schedule; me: Me; name: str
 
   return (
     <section className="mt-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 className="text-lg font-bold">Your times, {name}</h2>
-        <button type="button" onClick={onLeave} className="text-sm font-medium text-ink-soft underline underline-offset-4 hover:text-ink">
-          Not {name}?
+        <button type="button" onClick={onLeave} aria-label={`Not ${name}? Switch person`}
+          className="rounded-full bg-indigo-wash px-3.5 py-1.5 text-sm font-bold text-indigo hover:bg-indigo-wash-hover">
+          Switch person
         </button>
       </div>
 
@@ -240,9 +245,10 @@ function Grid({ s, me, name, hadPin, onLeave }: { s: Schedule; me: Me; name: str
                   return (
                     <td key={k} className="border-l border-rule p-0">
                       <button type="button" data-slot={k}
-                        aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${STATE_WORD[st]}`}
+                        aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${STATE_WORD[st]}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}`}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(k, st === mode ? 0 : mode); } }}
-                        className={`block w-full ${rowH} ${st === FREE ? "bg-indigo" : st === IF_NEEDED ? "if-needed" : "dot-grid"}`} />
+                        className={`block w-full ${rowH} ${st === FREE ? "bg-indigo" : st === IF_NEEDED ? "if-needed" : "dot-grid"}`}
+                        style={{ boxShadow: sessionOutline(s.sessions, date, m, s.slotMinutes) }} />
                     </td>
                   );
                 })}

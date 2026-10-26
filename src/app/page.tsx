@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MySchedules } from "./my-schedules";
 
 export default function Home() {
   return (
@@ -11,6 +12,7 @@ export default function Home() {
         className="mt-8 self-start rounded-full bg-indigo px-7 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep">
         Create a schedule
       </Link>
+      <MySchedules />
     </main>
   );
 }

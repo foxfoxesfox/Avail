@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Schedule } from "@/lib/supabase";
 import { Availability } from "./availability";
-import { GroupGrid } from "./group";
+import { GroupLive } from "./group";
 
 const TABS = [
   { id: "mine", label: "Your times" },
@@ -25,7 +25,7 @@ export function Views({ s }: { s: Schedule }) {
         ))}
       </div>
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "mine" ? <Availability s={s} /> : <GroupGrid s={s} />}
+        {tab === "mine" ? <Availability s={s} /> : <GroupLive s={s} />}
       </div>
     </>
   );
