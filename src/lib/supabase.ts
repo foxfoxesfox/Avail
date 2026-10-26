@@ -48,3 +48,11 @@ export async function getScheduleAsOrganizer(shareId: string, token: string): Pr
   if (error) throw error;
   return data;
 }
+
+export type Feed = { title: string; timeZone: string; name: string; sessions: Session[] };
+
+export async function getFeed(token: string): Promise<Feed | null> {
+  const { data, error } = await supabase.rpc("get_feed", { p_token: token });
+  if (error) throw error;
+  return data;
+}

@@ -21,7 +21,7 @@ async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
         </summary>
         <div className="mt-3"><ScheduleSummary s={s} showPeople={s.showNames} /></div>
       </details>
-      <SessionList sessions={s.sessions} />
+      <SessionList s={s} feedHint />
       <Views s={s} />
     </>
   );

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import type { Schedule } from "@/lib/supabase";
 import { formatDateRange, formatHour } from "@/lib/format";
 import { FREE, IF_NEEDED, fromRows, groupWeeks, slotKey, slotMinutes, toRows, weekColumns, type State } from "@/lib/grid";
 import { listDates } from "@/lib/schedule-form";
-import { loadMine, saveMine, setPin } from "./actions";
+import { feedToken, loadMine, saveMine, setPin } from "./actions";
 import { inSession, sessionOutline } from "../sessions";
+import { CopyLink } from "../copy-link";
 
 type Me = { pid: string; pin: string | null };
 
@@ -259,7 +261,10 @@ function Grid({ s, me, name, hadPin, onLeave }: { s: Schedule; me: Me; name: str
       </div>
       <p className="mt-2 text-xs text-ink-soft">Tap or drag to paint. Starting on a painted slot clears it. Unpainted means busy. Times in {s.timeZone.replaceAll("_", " ")}.</p>
 
-      {!hasPin && <PinOffer s={s} me={me} onSet={(pin) => { setHasPin(true); remember(s.shareId, { ...me, pin }); }} />}
+      <div className="mt-6 grid gap-3">
+        {!hasPin && <PinOffer s={s} me={me} onSet={(pin) => { setHasPin(true); remember(s.shareId, { ...me, pin }); }} />}
+        <CalendarFeed s={s} me={me} />
+      </div>
     </section>
   );
 }
@@ -279,7 +284,7 @@ export function WeekButton({ dir, disabled, onClick }: { dir: "prev" | "next"; d
 function PinOffer({ s, me, onSet }: { s: Schedule; me: Me; onSet: (pin: string) => void }) {
   const [error, setError] = useState("");
   return (
-    <details className="mt-6 rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4">
+    <details className="rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4">
       <summary className="cursor-pointer list-none py-3 text-sm font-bold text-ink-soft">
         Add a PIN <span className="font-normal">· so only you can change your times</span>
       </summary>
@@ -298,6 +303,138 @@ function PinOffer({ s, me, onSet }: { s: Schedule; me: Me; onSet: (pin: string) 
         <button className="shrink-0 rounded-full bg-indigo px-5 text-sm font-bold text-white hover:bg-indigo-deep">Set PIN</button>
       </form>
       {error && <p id="newPin-err" className="mt-1.5 text-sm font-medium text-vermilion">{error}</p>}
+    </details>
+  );
+}
+
+const quietBtn = "rounded-full bg-indigo-wash px-5 py-3 text-center text-sm font-bold text-indigo transition-colors duration-150 hover:bg-indigo-wash-hover";
+const textBtn = "font-medium text-indigo underline underline-offset-4";
+
+// Which subscribe options can work here: webcal:// opens Apple Calendar or desktop Outlook (Android has no handler),
+// and Google Calendar only adds feeds by URL on its website, not in its phone apps.
+function device() {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return "android";
+  if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+  return "desktop";
+}
+
+const GOOGLE_HOW = "add it in Google Calendar on a computer (Other calendars, then From URL); it syncs to your phone.";
+
+// The member's private subscription link. Fetched on first open so tokens are only made for people who want one.
+function CalendarFeed({ s, me }: { s: Schedule; me: Me }) {
+  const [token, setToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [notice, setNotice] = useState<"" | "reset" | "resetFailed">("");
+  const panel = useRef<HTMLDetailsElement>(null);
+  const resetBtn = useRef<HTMLButtonElement>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+
+  // "use your calendar feed" under Confirmed links here: open the panel and bring it into view.
+  useEffect(() => {
+    const onHash = () => {
+      if (location.hash !== "#calendar-feed" || !panel.current) return;
+      panel.current.open = true;
+      panel.current.scrollIntoView({ block: "start" });
+      panel.current.querySelector("summary")?.focus();
+    };
+    onHash();
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  async function load(reset: boolean) {
+    setBusy(true);
+    const t = await feedToken(s.shareId, me.pid, me.pin, reset).catch(() => null);
+    setBusy(false);
+    if (!reset) {
+      flushSync(() => { if (t) setToken(t); setFailed(!t); });
+      // The panel just grew; when it was opened from the link, keep all of it on screen.
+      if (location.hash === "#calendar-feed") panel.current?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    if (t) setToken(t);
+    flushSync(() => { setAsking(false); setNotice(t ? "reset" : "resetFailed"); });
+    noticeRef.current?.focus();
+  }
+
+  function keep() {
+    flushSync(() => setAsking(false));
+    resetBtn.current?.focus();
+  }
+
+  const path = token ? `/cal/${token}.ics` : "";
+  const webcal = token ? `webcal://${window.location.host}${path}` : "";
+  const on = token ? device() : "desktop";
+  return (
+    <details id="calendar-feed" ref={panel} className="scroll-mt-6 rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4"
+      onToggle={(e) => { if (e.currentTarget.open && !token && !busy) load(false); }}>
+      <summary className="cursor-pointer list-none py-3 text-sm font-bold text-ink-soft">
+        Calendar feed <span className="font-normal">· confirmed sessions show up in your calendar</span>
+      </summary>
+      {!token ? (
+        failed ? (
+          <p role="alert" className="text-sm font-medium text-vermilion">
+            Couldn&apos;t get your feed link.{" "}
+            <button type="button" onClick={() => load(false)} className={textBtn}>Try again</button>
+          </p>
+        ) : <p className="text-sm text-ink-soft">Getting your link…</p>
+      ) : (
+        <div className="grid gap-3 text-sm">
+          <p className="text-ink-soft">Confirmed sessions appear in your calendar, and cancelled ones disappear, on their own.</p>
+          {on === "desktop" && (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <a href={webcal} className={quietBtn}>Apple Calendar / Outlook</a>
+                <a href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`} target="_blank" rel="noopener noreferrer" className={quietBtn}>
+                  Google Calendar<span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              </div>
+              <p className="text-ink-soft">Google Calendar can take up to a day to show changes.</p>
+            </>
+          )}
+          {on === "ios" && (
+            <>
+              <a href={webcal} className={quietBtn}>Add to Apple Calendar</a>
+              <p className="text-ink-soft">Use Google Calendar? Copy the link below, then {GOOGLE_HOW}</p>
+            </>
+          )}
+          {on === "android" && <p className="text-ink-soft">Copy the link, then {GOOGLE_HOW}</p>}
+          <div className={on === "android" ? "" : "border-t border-rule pt-3"}>
+            <CopyLink path={path} label="Your private calendar feed link" action="Copy feed link" quiet={on !== "android"} />
+          </div>
+          {notice === "reset" && (
+            <p ref={noticeRef} tabIndex={-1} role="status" className="font-medium">New link ready. The old one no longer works, so subscribe again with this one.</p>
+          )}
+          {notice === "resetFailed" && (
+            <p ref={noticeRef} tabIndex={-1} role="alert" className="font-medium text-vermilion">
+              Couldn&apos;t reset the link, so the old one still works.{" "}
+              <button type="button" disabled={busy} onClick={() => load(true)} className={textBtn}>{busy ? "Resetting…" : "Try again"}</button>
+            </p>
+          )}
+          {asking ? (
+            <div className="grid gap-2">
+              <p>Reset the link? Calendars using the old one stop updating until you subscribe again.</p>
+              <div className="flex gap-1.5">
+                <button type="button" disabled={busy} onClick={() => load(true)}
+                  className="rounded-full bg-indigo px-3.5 py-1.5 font-bold text-white hover:bg-indigo-deep disabled:opacity-60">
+                  {busy ? "Resetting…" : "Yes, reset"}
+                </button>
+                <button type="button" autoFocus onClick={keep}
+                  className="rounded-full bg-indigo-wash px-3.5 py-1.5 font-bold text-indigo hover:bg-indigo-wash-hover">Keep</button>
+              </div>
+            </div>
+          ) : notice !== "resetFailed" && (
+            <p className="text-ink-soft">
+              The link is private to you.{" "}
+              <button type="button" ref={resetBtn} onClick={() => { setNotice(""); setAsking(true); }} className={`${textBtn} -my-1.5 inline-block py-1.5`}>Reset it</button>
+              {" "}if it&apos;s shared by mistake.
+            </p>
+          )}
+        </div>
+      )}
     </details>
   );
 }

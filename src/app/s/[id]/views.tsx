@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Schedule } from "@/lib/supabase";
 import { Availability } from "./availability";
 import { GroupLive } from "./group";
@@ -13,6 +13,12 @@ const TABS = [
 // Share page: members switch between painting their own times and seeing the group totals.
 export function Views({ s }: { s: Schedule }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("mine");
+  // The "use your calendar feed" link lives in Your times.
+  useEffect(() => {
+    const onHash = () => { if (location.hash === "#calendar-feed") setTab("mine"); };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   return (
     <>
       <div role="tablist" aria-label="View" className="mt-6 flex gap-1.5">

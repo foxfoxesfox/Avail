@@ -37,7 +37,7 @@ export function Board({ s, token }: { s: Schedule; token: string }) {
 
   return (
     <>
-      <SessionList sessions={s.sessions} onCancel={(id) => cancelSession(s.shareId, token, id)} />
+      <SessionList s={s} onCancel={(id) => cancelSession(s.shareId, token, id)} />
 
       <section className="mt-8">
         <h2 className="text-lg font-bold">Decide</h2>

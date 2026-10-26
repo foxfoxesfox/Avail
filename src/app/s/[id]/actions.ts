@@ -63,3 +63,11 @@ export async function getTotals(shareId: string, token: string | null): Promise<
   if (error) throw error;
   return data;
 }
+
+/** The member's private calendar feed token (created on first ask); reset issues a new one. Null when the PIN doesn't match. */
+export async function feedToken(shareId: string, pid: string, pin: string | null, reset: boolean): Promise<string | null> {
+  checkMember(shareId, pid, pin);
+  const { data, error } = await supabase.rpc("get_feed_token", { p_share_id: shareId, p_participant: pid, p_pin: pin, p_reset: reset === true });
+  if (error) throw error;
+  return data;
+}
