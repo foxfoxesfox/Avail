@@ -48,15 +48,16 @@ export function SessionList({ s, onCancel, feedHint = false }: {
               <AddToCalendar s={s} x={x} />
             </div>
             {onCancel && (asking === x.id ? (
-              <div className="flex shrink-0 gap-1.5">
-                <button type="button" disabled={pending} onClick={() => start(async () => { await onCancel(x.id); heading.current?.focus(); })}
-                  className="rounded-full bg-indigo px-3.5 py-1.5 text-sm font-bold text-white hover:bg-indigo-deep disabled:opacity-60">
-                  {pending ? "Cancelling…" : "Yes, cancel"}
-                </button>
+              // Keep first and full size, matching the shared two-step confirm.
+              <div className="flex shrink-0 flex-wrap justify-end gap-3">
                 <button type="button" autoFocus
                   onClick={() => { flushSync(() => setAsking(null)); document.getElementById(`cancel-${x.id}`)?.focus(); }}
-                  className="rounded-full bg-indigo-wash px-3.5 py-1.5 text-sm font-bold text-indigo hover:bg-indigo-wash-hover">
+                  className="rounded-full bg-indigo-wash px-5 py-3 text-sm font-bold text-indigo hover:bg-indigo-wash-hover">
                   Keep
+                </button>
+                <button type="button" disabled={pending} onClick={() => start(async () => { await onCancel(x.id); heading.current?.focus(); })}
+                  className="rounded-full bg-indigo px-5 py-3 text-sm font-bold text-white hover:bg-indigo-deep disabled:opacity-60">
+                  {pending ? "Cancelling…" : "Yes, cancel"}
                 </button>
               </div>
             ) : (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Schedule } from "@/lib/supabase";
-import { Availability } from "./availability";
+import { Availability, type Account } from "./availability";
 import { GroupLive } from "./group";
 
 const TABS = [
@@ -11,7 +11,7 @@ const TABS = [
 ] as const;
 
 // Share page: members switch between painting their own times and seeing the group totals.
-export function Views({ s }: { s: Schedule }) {
+export function Views({ s, account }: { s: Schedule; account: Account }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("mine");
   // The "use your calendar feed" link lives in Your times.
   useEffect(() => {
@@ -31,7 +31,7 @@ export function Views({ s }: { s: Schedule }) {
         ))}
       </div>
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "mine" ? <Availability s={s} /> : <GroupLive s={s} />}
+        {tab === "mine" ? <Availability s={s} account={account} /> : <GroupLive s={s} />}
       </div>
     </>
   );

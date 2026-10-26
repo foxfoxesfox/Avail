@@ -6,11 +6,14 @@ import type { Schedule } from "@/lib/supabase";
 import { formatDateRange, formatHour } from "@/lib/format";
 import { FREE, IF_NEEDED, fromRows, groupWeeks, slotKey, slotMinutes, toRows, weekColumns, type State } from "@/lib/grid";
 import { listDates } from "@/lib/schedule-form";
-import { feedToken, loadMine, saveMine, setPin } from "./actions";
+import { claimName, feedToken, loadMine, saveMine, setPin, unclaimName } from "./actions";
 import { inSession, sessionOutline } from "../sessions";
 import { CopyLink } from "../copy-link";
+import { Confirm } from "../confirm";
 
 type Me = { pid: string; pin: string | null };
+/** Who is signed in, as far as this schedule cares: whether anyone is, and the name they locked here. */
+export type Account = { signedIn: boolean; mine: string | null };
 
 // The chosen name (and PIN) is remembered on this device only.
 // shortcut: PIN sits in localStorage on the member's own device; move to accounts in slice 7.
@@ -35,21 +38,31 @@ const MODES: { state: State; label: string }[] = [
 ];
 const STATE_WORD = ["not marked", "if needed", "free"];
 
-export function Availability({ s }: { s: Schedule }) {
+export function Availability({ s, account }: { s: Schedule; account: Account }) {
   const raw = useSyncExternalStore(listen, () => localStorage.getItem(storeKey(s.shareId)), () => null);
-  const me: Me | null = raw ? JSON.parse(raw) : null;
+  const [left, setLeft] = useState(false);
+  // A name locked to this account opens on any device; "Switch person" still lets them pick another.
+  const me: Me | null = raw ? JSON.parse(raw) : account.mine && !left ? { pid: account.mine, pin: null } : null;
   const person = me && s.participants.find((p) => p.id === me.pid);
+  const leave = () => { setLeft(true); remember(s.shareId, null); };
 
-  if (!me || !person) return <NamePicker s={s} onPick={(m) => remember(s.shareId, m)} />;
-  return <Grid key={me.pid} s={s} me={me} name={person.name} hadPin={person.hasPin} onLeave={() => remember(s.shareId, null)} />;
+  if (!me || !person) return <NamePicker s={s} account={account} onPick={(m) => remember(s.shareId, m)} />;
+  return <Grid key={me.pid} s={s} me={me} name={person.name} hadPin={person.hasPin} account={account}
+    linked={person.claimed && account.mine === person.id} onLeave={leave} />;
 }
 
-function NamePicker({ s, onPick }: { s: Schedule; onPick: (me: Me) => void }) {
+const signInHref = (shareId: string) => `/sign-in?next=${encodeURIComponent(`/s/${shareId}`)}`;
+
+function NamePicker({ s, account, onPick }: { s: Schedule; account: Account; onPick: (me: Me) => void }) {
   const [asking, setAsking] = useState<{ id: string; name: string } | null>(null);
+  const [locked, setLocked] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function choose(id: string, pin: string | null) {
+    const p = s.participants.find((x) => x.id === id);
+    setLocked(p?.claimed && account.mine !== id ? p.name : null);
+    if (p?.claimed && account.mine !== id) return;
     setBusy(true);
     setError("");
     const rows = await loadMine(s.shareId, id, pin).catch(() => undefined);
@@ -90,14 +103,23 @@ function NamePicker({ s, onPick }: { s: Schedule; onPick: (me: Me) => void }) {
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {s.participants.map((p) => (
           <li key={p.id}>
-            <button type="button" disabled={busy} onClick={() => (p.hasPin ? setAsking(p) : choose(p.id, null))}
+            <button type="button" disabled={busy} onClick={() => (p.hasPin && !p.claimed ? setAsking(p) : choose(p.id, null))}
               className="w-full rounded-full border border-rule bg-sheet px-4 py-3 text-left text-base font-medium hover:border-indigo hover:text-indigo disabled:opacity-70">
               {p.name}
+              {p.claimed && p.id !== account.mine && <span className="font-normal text-ink-soft"> · linked</span>}
             </button>
           </li>
         ))}
       </ul>
       {error && <p role="alert" className="mt-3 text-sm font-medium text-vermilion">{error}</p>}
+      {locked && (
+        <p role="alert" className="mt-3 text-sm font-medium">
+          {locked} is linked to an account, so only they can change it. If that&apos;s you,{" "}
+          <a href={signInHref(s.shareId)} className="text-indigo underline underline-offset-4">
+            {account.signedIn ? "sign in with that account" : "sign in"}
+          </a>.
+        </p>
+      )}
       <p className="mt-4 text-sm text-ink-soft">Not listed? Ask the organizer to add you.</p>
     </section>
   );
@@ -105,7 +127,9 @@ function NamePicker({ s, onPick }: { s: Schedule; onPick: (me: Me) => void }) {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-function Grid({ s, me, name, hadPin, onLeave }: { s: Schedule; me: Me; name: string; hadPin: boolean; onLeave: () => void }) {
+function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
+  s: Schedule; me: Me; name: string; hadPin: boolean; account: Account; linked: boolean; onLeave: () => void;
+}) {
   const weeks = groupWeeks(listDates(s.startDate, s.endDate, s.weekdays));
   const minutes = slotMinutes(s.dayStartMin, s.dayEndMin, s.slotMinutes);
   const [answers, setAnswers] = useState<Map<string, State> | null>(null);
@@ -262,7 +286,25 @@ function Grid({ s, me, name, hadPin, onLeave }: { s: Schedule; me: Me; name: str
       <p className="mt-2 text-xs text-ink-soft">Tap or drag to paint. Starting on a painted slot clears it. Unpainted means busy. Times in {s.timeZone.replaceAll("_", " ")}.</p>
 
       <div className="mt-6 grid gap-3">
-        {!hasPin && <PinOffer s={s} me={me} onSet={(pin) => { setHasPin(true); remember(s.shareId, { ...me, pin }); }} />}
+        {/* Persistent live region: linking swaps the offer for the "Linked" line, and screen readers hear it. */}
+        <div aria-live="polite" className="grid gap-3">
+        {linked ? <Linked s={s} me={me} />
+          : account.signedIn && !account.mine ? <ClaimOffer s={s} me={me} name={name} />
+          : account.signedIn ? (
+            <>
+              <p className="text-sm text-ink-soft">Your account is linked to another name on this schedule, so this one can&apos;t be linked too.</p>
+              {!hasPin && <PinOffer s={s} me={me} onSet={(pin) => { setHasPin(true); remember(s.shareId, { ...me, pin }); }} />}
+            </>
+          )
+          : (
+            <>
+              {!hasPin && <PinOffer s={s} me={me} onSet={(pin) => { setHasPin(true); remember(s.shareId, { ...me, pin }); }} />}
+              <p className="text-sm text-ink-soft">
+                Or <a href={signInHref(s.shareId)} className="font-medium text-indigo underline underline-offset-4">sign in</a> to link this name to your account and change it from any device.
+              </p>
+            </>
+          )}
+        </div>
         <CalendarFeed s={s} me={me} />
       </div>
     </section>
@@ -278,6 +320,47 @@ export function WeekButton({ dir, disabled, onClick }: { dir: "prev" | "next"; d
         {dir === "prev" ? <path d="M13 8H3m4-4L3 8l4 4" /> : <path d="M3 8h10m-4-4 4 4-4 4" />}
       </svg>
     </button>
+  );
+}
+
+// Signed in, name not linked yet: lock it to the account (replaces the PIN).
+function ClaimOffer({ s, me, name }: { s: Schedule; me: Me; name: string }) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <details className="rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4">
+      <summary className="cursor-pointer list-none py-3 text-sm font-bold text-ink-soft">
+        Link to your account <span className="font-normal">· change your times from any device, no PIN</span>
+      </summary>
+      <p className="text-sm text-ink-soft">Only you will be able to change {name}&apos;s times after this.</p>
+      <button type="button" disabled={busy} onClick={async () => {
+        setBusy(true);
+        const ok = await claimName(s.shareId, me.pid, me.pin).catch(() => false);
+        setBusy(false);
+        if (!ok) setError("Couldn't link this name. Reload the page and try again.");
+      }} className="mt-3 rounded-full bg-indigo px-5 py-3 text-sm font-bold text-white hover:bg-indigo-deep disabled:opacity-60">
+        {busy ? "Linking…" : `Link ${name}`}
+      </button>
+      {error && <p role="alert" className="mt-1.5 text-sm font-medium text-vermilion">{error}</p>}
+    </details>
+  );
+}
+
+function Linked({ s, me }: { s: Schedule; me: Me }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <p className="text-sm text-ink-soft">
+      Linked to your account, so only you can change these times.{" "}
+      <button type="button" disabled={busy} onClick={async () => {
+        setBusy(true);
+        // Keep the name on this device, so unlinking doesn't send them back to the name list.
+        if (await unclaimName(s.shareId, me.pid).catch(() => false)) remember(s.shareId, me);
+        setBusy(false);
+      }}
+        className="-my-1.5 inline-block py-1.5 font-medium text-indigo underline underline-offset-4 disabled:opacity-60">
+        {busy ? "Unlinking…" : "Unlink"}
+      </button>
+    </p>
   );
 }
 
@@ -415,17 +498,9 @@ function CalendarFeed({ s, me }: { s: Schedule; me: Me }) {
             </p>
           )}
           {asking ? (
-            <div className="grid gap-2">
-              <p>Reset the link? Calendars using the old one stop updating until you subscribe again.</p>
-              <div className="flex gap-1.5">
-                <button type="button" disabled={busy} onClick={() => load(true)}
-                  className="rounded-full bg-indigo px-3.5 py-1.5 font-bold text-white hover:bg-indigo-deep disabled:opacity-60">
-                  {busy ? "Resetting…" : "Yes, reset"}
-                </button>
-                <button type="button" autoFocus onClick={keep}
-                  className="rounded-full bg-indigo-wash px-3.5 py-1.5 font-bold text-indigo hover:bg-indigo-wash-hover">Keep</button>
-              </div>
-            </div>
+            <Confirm busy={busy} onYes={() => load(true)} onKeep={keep}
+              question="Reset the link? Calendars using the old one stop updating until you subscribe again."
+              yes="Yes, reset" busyYes="Resetting…" />
           ) : notice !== "resetFailed" && (
             <p className="text-ink-soft">
               The link is private to you.{" "}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getSchedule } from "@/lib/supabase";
+import { currentUser, getMyParticipant, getSchedule } from "@/lib/supabase";
 import { ScheduleSummary } from "../summary";
 import { Views } from "./views";
 import { SessionList } from "../sessions";
@@ -9,8 +9,10 @@ import { SessionList } from "../sessions";
 export const metadata: Metadata = { title: "Schedule", robots: { index: false, follow: false } };
 
 async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
-  const s = await getSchedule((await params).id);
+  const id = (await params).id;
+  const [s, user] = await Promise.all([getSchedule(id), currentUser()]);
   if (!s) notFound();
+  const mine = user ? await getMyParticipant(id) : null;
   return (
     <>
       <title>{`${s.title} · Avail`}</title>
@@ -22,7 +24,7 @@ async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
         <div className="mt-3"><ScheduleSummary s={s} showPeople={s.showNames} /></div>
       </details>
       <SessionList s={s} feedHint />
-      <Views s={s} />
+      <Views s={s} account={{ signedIn: !!user, mine }} />
     </>
   );
 }

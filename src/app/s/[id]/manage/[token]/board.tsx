@@ -17,7 +17,7 @@ const labelCls = "mb-1.5 block text-xs font-bold tracking-[0.06em] text-ink-soft
 type Pick = { day: string; startMin: number; endMin: number; manual?: boolean };
 
 /** Organizer workspace: key members, ranked times, confirm, and everyone's grid. One shared poll. */
-export function Board({ s, token }: { s: Schedule; token: string }) {
+export function Board({ s, token }: { s: Schedule; token: string | null }) {
   const { data, failed } = useTotals(s.shareId, token);
   const [pending, start] = useTransition();
   const days = listDates(s.startDate, s.endDate, s.weekdays);
@@ -153,7 +153,7 @@ function Missing({ label, names }: { label: string; names: string[] }) {
   return names.length ? <p className="mt-0.5 text-ink-soft">{label}: {names.join(", ")}</p> : null;
 }
 
-function ConfirmForm({ s, token, pick, onDone }: { s: Schedule; token: string; pick: Pick; onDone: () => void }) {
+function ConfirmForm({ s, token, pick, onDone }: { s: Schedule; token: string | null; pick: Pick; onDone: () => void }) {
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   return (

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { currentUser, db, supabase } from "@/lib/supabase";
 import { parseScheduleForm, type Field } from "@/lib/schedule-form";
 
 export type CreateState = { errors?: Partial<Record<Field, string>>; message?: string; values?: Record<string, string | string[]> };
@@ -41,5 +41,10 @@ export async function createSchedule(_prev: CreateState, form: FormData): Promis
   }
 
   const { share_id, admin_token } = data[0];
+  // Signed in: the creator owns it from the start, so it's in Your schedules on every device.
+  if (await currentUser()) {
+    const { error: addError } = await (await db()).rpc("add_organizer", { p_share_id: share_id, p_token: admin_token });
+    if (addError) console.error("add_organizer failed", addError);
+  }
   redirect(`/s/${share_id}/manage/${admin_token}`);
 }

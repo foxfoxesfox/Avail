@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // Organizer links carry a secret in the path: never leak it via Referer.
   async headers() {
-    return [{ source: "/s/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] }];
+    const noReferrer = [{ key: "Referrer-Policy", value: "no-referrer" }];
+    // /sign-in can carry an organizer path in ?next=; /invite carries the invite secret.
+    return [{ source: "/s/:path*", headers: noReferrer }, { source: "/sign-in", headers: noReferrer }, { source: "/invite/:path*", headers: noReferrer }];
   },
   turbopack: {
     rules: {

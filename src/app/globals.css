@@ -5,7 +5,7 @@
   --color-paper: #f4f6f5;
   --color-sheet: #ffffff;
   --color-ink: #1e2328;
-  --color-ink-soft: #4f5a64; /* secondary text, 6.9:1 on paper */
+  --color-ink-soft: #4f5a64; /* secondary text, 6.5:1 on paper, 7.0:1 on white */
   --color-rule: #cbd3da;
   --color-dot: #b9c3cc;
   --color-indigo: #2d3e8c;
@@ -24,6 +24,11 @@ html {
   -webkit-text-size-adjust: 100%;
   accent-color: var(--color-indigo);
   caret-color: var(--color-indigo);
+}
+
+/* No single stranded word on the last line of short paragraphs. */
+p {
+  text-wrap: pretty;
 }
 
 ::selection {

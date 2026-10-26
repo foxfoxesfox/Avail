@@ -1,5 +1,24 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { currentUser, getMySchedules } from "@/lib/supabase";
 import { MySchedules } from "./my-schedules";
+import { ScheduleList } from "./account/schedule-list";
+
+// Signed in: the account's schedules, then any other organizer links on this device. Guests: just the device list.
+async function Lists() {
+  const user = await currentUser();
+  if (!user) return <MySchedules />;
+  const list = await getMySchedules();
+  return (
+    <>
+      <section className="mt-12">
+        <h2 className="text-lg font-bold">Your schedules</h2>
+        <ScheduleList list={list} />
+      </section>
+      <MySchedules exclude={list.map((x) => x.shareId)} />
+    </>
+  );
+}
 
 export default function Home() {
   return (
@@ -12,7 +31,9 @@ export default function Home() {
         className="mt-8 self-start rounded-full bg-indigo px-7 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep">
         Create a schedule
       </Link>
-      <MySchedules />
+      <Suspense fallback={null}>
+        <Lists />
+      </Suspense>
     </main>
   );
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Zen_Kaku_Gothic_New } from "next/font/google";
 import { NavSlot } from "./nav-slot";
+import { AccountSlot } from "./account-slot";
 import "./globals.css";
 
 const zen = Zen_Kaku_Gothic_New({
@@ -28,10 +29,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Avail
               <span aria-hidden className="size-2.5 rounded-full bg-seal" />
             </Link>
-            {/* The current path is request-time data under Cache Components. */}
-            <Suspense fallback={<span className="text-sm font-medium text-ink-soft">New schedule</span>}>
-              <NavSlot />
-            </Suspense>
+            <nav className="flex items-center gap-4">
+              {/* The current path and the session are request-time data under Cache Components. */}
+              <Suspense fallback={<span className="text-sm font-medium text-ink-soft">New schedule</span>}>
+                <NavSlot />
+              </Suspense>
+              <Suspense fallback={null}>
+                <AccountSlot />
+              </Suspense>
+            </nav>
           </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
