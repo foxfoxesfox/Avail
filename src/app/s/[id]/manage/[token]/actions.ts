@@ -168,3 +168,15 @@ export async function resetShareLink(shareId: string, token: string | null): Pro
   if (error) return null;
   return data;
 }
+
+/** Delete the schedule for good. The typed name must match exactly (checked again in the database). */
+export async function deleteSchedule(shareId: string, token: string | null, title: string): Promise<{ error?: string }> {
+  checkOrganizer(shareId, token);
+  const { error } = await (await db()).rpc("delete_schedule", { p_share_id: shareId, p_token: token, p_title: String(title) });
+  if (error) {
+    if (error.message.includes("does not match")) return { error: "That isn't the schedule's exact name." };
+    console.error("delete_schedule failed", error);
+    return { error: "Couldn't delete the schedule. Nothing was removed; try again." };
+  }
+  return {};
+}

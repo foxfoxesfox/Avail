@@ -7,6 +7,7 @@ import { Board } from "./[token]/board";
 import { Organizers } from "./[token]/organizers";
 import { Details } from "./[token]/details";
 import { People } from "./[token]/people";
+import { DeleteSchedule } from "./[token]/delete-schedule";
 import { ShareControls } from "./[token]/share-controls";
 
 /** The organizer page. Reached by the secret link (token) or, signed in, by an account that organizes it (token null). */
@@ -53,6 +54,8 @@ export async function Manage({ shareId, token }: { shareId: string; token: strin
       <Organizers shareId={s.shareId} title={s.title} token={token} user={user} org={org} />
 
       <Details s={s} token={token} />
+      {/* The organizer link or the owner account may delete; co-organizers may not. */}
+      {(token || org?.myRole === "owner") && <DeleteSchedule s={s} token={token} />}
     </>
   );
 }

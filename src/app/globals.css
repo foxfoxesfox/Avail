@@ -26,6 +26,16 @@ html {
   caret-color: var(--color-indigo);
 }
 
+/* Tailwind 4 drops the pointer cursor on buttons; bring it back so every control reads as clickable. */
+button:not(:disabled):not([aria-disabled="true"]), [role="button"], summary {
+  cursor: pointer;
+}
+
+/* Underlined text links and link-style buttons thicken on hover. */
+a.underline:hover, button.underline:hover {
+  text-decoration-thickness: 2px;
+}
+
 /* No single stranded word on the last line of short paragraphs. */
 p {
   text-wrap: pretty;
