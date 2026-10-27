@@ -12,9 +12,15 @@ const zen = Zen_Kaku_Gothic_New({
   subsets: ["latin"],
 });
 
+const description = "Share one link, see when your team is free, and send the chosen time to everyone's calendar.";
+
+// Link previews (chat apps, social): the image comes from opengraph-image.tsx; pages without their own text use this.
 export const metadata: Metadata = {
+  metadataBase: new URL("https://avail.foxesvx.dev"),
   title: { default: "Avail", template: "%s · Avail" },
-  description: "Share one link, see when your team is free, and send the chosen time to everyone's calendar.",
+  description,
+  openGraph: { siteName: "Avail", type: "website", description },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = { themeColor: "#f4f6f5" };

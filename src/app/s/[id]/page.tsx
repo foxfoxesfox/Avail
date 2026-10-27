@@ -6,7 +6,14 @@ import { ScheduleSummary } from "../summary";
 import { Views } from "./views";
 import { SessionList } from "../sessions";
 
-export const metadata: Metadata = { title: "Schedule", robots: { index: false, follow: false } };
+// What a member sees when the share link is pasted into a chat: inviting, and nothing about the schedule's contents.
+const description = "Pick your name and mark when you're free.";
+export const metadata: Metadata = {
+  title: "Schedule", description, robots: { index: false, follow: false },
+  // Own preview text replaces the inherited one wholesale, so the shared image is named again here.
+  openGraph: { siteName: "Avail", type: "website", title: "You're invited to find a time on Avail", description, images: "/opengraph-image" },
+  twitter: { card: "summary_large_image", images: "/opengraph-image" },
+};
 
 async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
   const id = (await params).id;
