@@ -65,3 +65,14 @@ test("listDates keeps chosen weekdays only", () => {
 test("parseMembers splits lines and commas, collapses spaces", () => {
   assert.deepEqual(parseMembers(" Mei   Lin ,\r\nA\n\n"), ["Mei Lin", "A"]);
 });
+
+test("editing skips the member list", () => {
+  const f: Record<string, string> = {
+    title: "Project meetings", startDate: "2026-11-02", endDate: "2026-11-13", startHour: "10", endHour: "18",
+    slotMinutes: "30", timeZone: "Asia/Singapore", deadline: "", visibility: "names", members: "",
+  };
+  const r = parseScheduleForm((k) => f[k] ?? "", (k) => (k === "weekdays" ? ["1", "3"] : []), new Set(["Asia/Singapore"]), { edit: true });
+  assert.equal(r.ok, true);
+  const r2 = parseScheduleForm((k) => f[k] ?? "", (k) => (k === "weekdays" ? ["1"] : []), new Set(["Asia/Singapore"]));
+  assert.equal(r2.ok, false);
+});

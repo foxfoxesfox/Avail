@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import type { Schedule } from "@/lib/supabase";
-import { formatDateRange, formatHour } from "@/lib/format";
+import { formatDateRange, formatDeadline, formatHour } from "@/lib/format";
 import { FREE, IF_NEEDED, fromRows, groupWeeks, slotKey, slotMinutes, toRows, weekColumns, type State } from "@/lib/grid";
 import { listDates } from "@/lib/schedule-form";
 import { claimName, feedToken, loadMine, saveMine, setPin, unclaimName } from "./actions";
@@ -68,6 +68,7 @@ function NamePicker({ s, account, onPick }: { s: Schedule; account: Account; onP
     const rows = await loadMine(s.shareId, id, pin).catch(() => undefined);
     setBusy(false);
     if (rows === undefined) setError("Couldn't reach the server. Check your connection and try again.");
+    else if (rows === "locked") setError("Too many wrong PINs for this name. Try again in 15 minutes.");
     // No rows without a PIN means this name has one (the page may predate it being set): ask for it.
     else if (rows === null && !pin) setAsking(s.participants.find((p) => p.id === id) ?? null);
     else if (rows === null) setError("That PIN doesn't match.");
@@ -142,7 +143,10 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
   const dirty = useRef(false);
 
   useEffect(() => {
-    loadMine(s.shareId, me.pid, me.pin).then((rows) => (rows ? setAnswers(fromRows(rows)) : onLeave()), () => setSave("error"));
+    loadMine(s.shareId, me.pid, me.pin).then(
+      // Wrong or locked PIN: back to the name list, which explains which.
+      (rows) => (Array.isArray(rows) ? setAnswers(fromRows(rows)) : onLeave()),
+      () => setSave("error"));
   }, [s.shareId, me.pid, me.pin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Autosave shortly after the last change.
@@ -157,6 +161,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
   }, [answers, s.shareId, me.pid, me.pin]);
 
   function set(key: string, state: State) {
+    if (s.closed) return; // answers closed: the grid is read-only
     setAnswers((prev) => {
       if (!prev || (prev.get(key) ?? 0) === state) return prev;
       dirty.current = true;
@@ -187,6 +192,11 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
         </button>
       </div>
 
+      {s.closed ? (
+        <p className="mt-4 border-t border-ink pt-3 text-sm font-medium">
+          Answers are closed{s.deadline ? ` since ${formatDeadline(s.deadline, s.timeZone)}` : ""}. These are your saved times; ask the organizer to reopen if you need to change them.
+        </p>
+      ) : (
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div role="radiogroup" aria-label="Paint with" className="flex gap-1.5">
           {MODES.map((m) => {
@@ -204,6 +214,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
           {save === "saving" ? "Saving…" : save === "saved" ? "Saved" : save === "error" ? "Not saved" : ""}
         </p>
       </div>
+      )}
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <WeekButton dir="prev" disabled={week === 0} onClick={() => setWeek(week - 1)} />
@@ -218,7 +229,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
       </div>
 
       <div
-        className="mt-3 touch-none select-none"
+        className={`mt-3 select-none ${s.closed ? "" : "touch-none"}`}
         onPointerDown={(e) => {
           const k = keyAt(e.clientX, e.clientY);
           if (!k) return;
@@ -270,7 +281,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
                   const st = answers.get(k) ?? 0;
                   return (
                     <td key={k} className="border-l border-rule p-0">
-                      <button type="button" data-slot={k}
+                      <button type="button" data-slot={k} aria-disabled={s.closed || undefined}
                         aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${STATE_WORD[st]}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}`}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(k, st === mode ? 0 : mode); } }}
                         className={`block w-full ${rowH} ${st === FREE ? "bg-indigo" : st === IF_NEEDED ? "if-needed" : "dot-grid"}`}
@@ -283,7 +294,9 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-ink-soft">Tap or drag to paint. Starting on a painted slot clears it. Unpainted means busy. Times in {s.timeZone.replaceAll("_", " ")}.</p>
+      <p className="mt-2 text-xs text-ink-soft">
+        {s.closed ? "" : "Tap or drag to paint. Starting on a painted slot clears it. "}Unpainted means busy. Times in {s.timeZone.replaceAll("_", " ")}.
+      </p>
 
       <div className="mt-6 grid gap-3">
         {/* Persistent live region: linking swaps the offer for the "Linked" line, and screen readers hear it. */}

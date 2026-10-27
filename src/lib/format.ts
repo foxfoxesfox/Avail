@@ -43,3 +43,11 @@ export function formatDeadline(iso: string, timeZone: string) {
 export function formatZone(timeZone: string) {
   return timeZone.replaceAll("_", " ").split("/").pop()!;
 }
+
+/** An instant as a datetime-local value ("2026-10-30T17:00") in the schedule's zone, for editing the deadline. */
+export function toLocalInput(iso: string, timeZone: string) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { sendLink, type SendState } from "./actions";
+import { Turnstile } from "../turnstile";
 
 export function EmailForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState<SendState, FormData>(sendLink, {});
@@ -30,6 +31,7 @@ export function EmailForm({ next }: { next: string }) {
         aria-invalid={!!state.error} aria-describedby={state.error ? "email-err" : undefined}
         className="w-full rounded-[10px] border border-rule bg-sheet px-3.5 py-3 text-base text-ink aria-[invalid=true]:border-vermilion" />
       {state.error && <p id="email-err" className="mt-1.5 text-sm font-medium text-vermilion">{state.error}</p>}
+      <div className="mt-4"><Turnstile resetKey={state} /></div>
       <button disabled={pending}
         className="mt-4 w-full rounded-full bg-indigo px-6 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep disabled:opacity-60">
         {pending ? "Sending…" : "Email me a sign-in link"}

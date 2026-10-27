@@ -1,11 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { currentUser, getOrganizers, getScheduleAsOrganizer } from "@/lib/supabase";
 import { CopyLink } from "../../copy-link";
-import { ScheduleSummary } from "../../summary";
 import { Hanko } from "../../sessions";
 import { RememberOrganizer } from "../../../my-schedules";
 import { Board } from "./[token]/board";
 import { Organizers } from "./[token]/organizers";
+import { Details } from "./[token]/details";
+import { People } from "./[token]/people";
+import { ShareControls } from "./[token]/share-controls";
 
 /** The organizer page. Reached by the secret link (token) or, signed in, by an account that organizes it (token null). */
 export async function Manage({ shareId, token }: { shareId: string; token: string | null }) {
@@ -32,6 +34,7 @@ export async function Manage({ shareId, token }: { shareId: string; token: strin
         <h2 className="mb-1 text-lg font-bold">Share link</h2>
         <p className="mb-3 text-sm text-ink-soft">For members: they pick their name and mark when they&apos;re free.</p>
         <CopyLink path={`/s/${s.shareId}`} label="Share link" action="Copy share link" />
+        <ShareControls s={s} token={token} />
       </section>
 
       {token && (
@@ -46,12 +49,10 @@ export async function Manage({ shareId, token }: { shareId: string; token: strin
 
       <Board s={s} token={token} />
       {token && <RememberOrganizer shareId={s.shareId} token={token} title={s.title} />}
+      <People s={s} token={token} />
       <Organizers shareId={s.shareId} title={s.title} token={token} user={user} org={org} />
 
-      <section className="mt-10">
-        <h2 className="mb-3 text-lg font-bold">Details</h2>
-        <ScheduleSummary s={s} />
-      </section>
+      <Details s={s} token={token} />
     </>
   );
 }

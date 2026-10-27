@@ -16,6 +16,12 @@ const listen = (cb: () => void) => {
   return () => window.removeEventListener("storage", cb);
 };
 
+/** Drop a schedule from this device's list (its share link changed, so the saved address is dead). */
+export function forgetOrganizerLink(shareId: string) {
+  localStorage.setItem(KEY, JSON.stringify(read().filter((x) => x.shareId !== shareId)));
+  window.dispatchEvent(new StorageEvent("storage"));
+}
+
 export function saveOrganizerLink(shareId: string, token: string, title: string) {
   const rest = read().filter((x) => x.shareId !== shareId);
   localStorage.setItem(KEY, JSON.stringify([{ shareId, token, title, at: Date.now() }, ...rest].slice(0, 20)));

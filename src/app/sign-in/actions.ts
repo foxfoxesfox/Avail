@@ -22,10 +22,15 @@ export async function sendLink(_prev: SendState, form: FormData): Promise<SendSt
   const email = String(form.get("email") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { error: "Enter an email address like name@example.com.", email };
   await rememberNext(form);
-  const { error } = await (await db()).auth.signInWithOtp({ email, options: { emailRedirectTo: await callback() } });
+  // Supabase checks the Turnstile token itself once CAPTCHA protection is on in its Auth settings.
+  const captchaToken = String(form.get("cf-turnstile-response") ?? "") || undefined;
+  const { error } = await (await db()).auth.signInWithOtp({ email, options: { emailRedirectTo: await callback(), captchaToken } });
   if (error) {
     console.error("signInWithOtp failed", error.code, error.message);
     // Until custom email (Resend) is set up, Supabase only emails the project team.
+    if (error.message.toLowerCase().includes("captcha")) {
+      return { error: "Couldn't confirm you're a person. Wait a moment, then try again.", email };
+    }
     if (error.code === "email_address_not_authorized") {
       return { error: "Email sign-in isn't open to everyone yet. You can still use Avail without an account.", email };
     }

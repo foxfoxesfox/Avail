@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createSchedule, type CreateState } from "./actions";
 import { listDates, parseMembers, SLOT_SIZES } from "@/lib/schedule-form";
 import { formatDateRange, formatHour } from "@/lib/format";
+import { Turnstile } from "../turnstile";
 
 const DAYS = [
   { v: 1, short: "M", name: "Monday" },
@@ -59,11 +60,18 @@ function WeekStrip({ start, end, weekdays }: { start: string; end: string; weekd
 }
 
 function Err({ id, msg }: { id: string; msg?: string }) {
-  return msg ? <p id={id} className="mt-1.5 text-sm font-medium text-vermilion">{msg}</p> : null;
+  return msg ? <p id={id} role="alert" className="mt-1.5 text-sm font-medium text-vermilion">{msg}</p> : null;
 }
 
-export function CreateForm({ defaults, zones }: { defaults: Values; zones: string[] }) {
-  const [state, action, pending] = useActionState<CreateState, FormData>(createSchedule, {});
+type FormState = CreateState & { saved?: number };
+
+/** The schedule setup form. With `edit` it changes a live schedule: no member list (people are edited one by one)
+ *  and the time zone is fixed, since answers are stored in it. */
+export function CreateForm({ defaults, zones, edit }: {
+  defaults: Values; zones: string[];
+  edit?: { action: (prev: FormState, form: FormData) => Promise<FormState>; people: number; onDone: () => void; onDirty: () => void };
+}) {
+  const [state, action, pending] = useActionState<FormState, FormData>(edit?.action ?? createSchedule, {});
   const values: Values = state.values ?? defaults;
   const e = state.errors ?? {};
   const v = (k: string) => String(values[k] ?? "");
@@ -78,7 +86,7 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
   // The server only knows UTC: switch the defaults to the visitor's own zone and local today.
   useEffect(() => {
     const f = formRef.current;
-    if (state.values || !f) return;
+    if (edit || state.values || !f) return;
     const set = (name: string, value: string) => ((f.elements.namedItem(name) as HTMLInputElement).value = value);
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (zones.includes(tz)) set("timeZone", tz);
@@ -87,7 +95,14 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
     set("startDate", local(now));
     set("endDate", local(new Date(now.getTime() + 13 * 86_400_000)));
     read(f);
-  }, [zones, state.values]);
+  }, [zones, state.values, edit]);
+
+  const onDone = edit?.onDone;
+  useEffect(() => { if (state.saved) onDone?.(); }, [state.saved, onDone]);
+  // A failed submit: put the keyboard on the first field that needs fixing (its message is announced).
+  useEffect(() => {
+    if (state.errors) formRef.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+  }, [state.errors]);
 
   // After a submit the form resets to the echoed values; keep the summary in step.
   const [seenState, setSeenState] = useState(state);
@@ -99,11 +114,12 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
   const weekdays = (snap.weekdays as string[] | undefined)?.map(Number) ?? [];
   const dates = listDates(String(snap.startDate), String(snap.endDate), weekdays);
   const slots = Math.max(0, ((Number(snap.endHour) - Number(snap.startHour)) * 60) / Number(snap.slotMinutes || 60));
-  const people = parseMembers(String(snap.members ?? "")).length;
+  const people = edit ? edit.people : parseMembers(String(snap.members ?? "")).length;
   const chosen = (d: number) => ((values.weekdays as string[] | undefined) ?? []).includes(String(d));
 
   return (
-    <form ref={formRef} action={action} onChange={(ev) => read(ev.currentTarget)} noValidate
+    <form ref={formRef} action={action} onChange={(ev) => { read(ev.currentTarget); edit?.onDirty(); }} noValidate
+      onSubmit={(ev) => { if (pending) ev.preventDefault(); }}
       className="grid gap-x-10 gap-y-6 md:grid-cols-[minmax(0,1fr)_15rem]">
       <div className="grid content-start gap-5">
         <div>
@@ -159,28 +175,39 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
           </div>
           <div>
             <label htmlFor="slotMinutes" className={labelCls}>Slot</label>
-            <select id="slotMinutes" name="slotMinutes" defaultValue={v("slotMinutes")} className={field}>
+            <select id="slotMinutes" name="slotMinutes" defaultValue={v("slotMinutes")} aria-invalid={!!e.slotMinutes} aria-describedby="slot-err" className={field}>
               {SLOT_SIZES.map((m) => <option key={m} value={m}>{m} min</option>)}
             </select>
           </div>
         </div>
         <Err id="hours-err" msg={e.dayEndMin} />
+        <Err id="slot-err" msg={e.slotMinutes} />
 
-        <div>
-          <label htmlFor="timeZone" className={labelCls}>Time zone</label>
-          <select id="timeZone" name="timeZone" defaultValue={v("timeZone")} aria-invalid={!!e.timeZone} aria-describedby="timeZone-err" className={field}>
-            {zones.map((z) => <option key={z} value={z}>{z.replaceAll("_", " ")}</option>)}
-          </select>
-          <Err id="timeZone-err" msg={e.timeZone} />
-        </div>
+        {edit ? (
+          <div>
+            <p className={labelCls}>Time zone</p>
+            <input type="hidden" name="timeZone" value={v("timeZone")} />
+            <p className="text-base">{v("timeZone").replaceAll("_", " ")} <span className="text-sm text-ink-soft">· fixed, since answers are saved in it</span></p>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="timeZone" className={labelCls}>Time zone</label>
+            <select id="timeZone" name="timeZone" defaultValue={v("timeZone")} aria-invalid={!!e.timeZone} aria-describedby="timeZone-err" className={field}>
+              {zones.map((z) => <option key={z} value={z}>{z.replaceAll("_", " ")}</option>)}
+            </select>
+            <Err id="timeZone-err" msg={e.timeZone} />
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="members" className={labelCls}>People · one per line</label>
-          <textarea id="members" name="members" rows={6} defaultValue={v("members")} placeholder={"Alex\nSam\nPriya"}
-            aria-invalid={!!e.members} aria-describedby="members-err"
-            className={`${field} dot-lines resize-y leading-[1.75rem]`} />
-          <Err id="members-err" msg={e.members} />
-        </div>
+        {!edit && (
+          <div>
+            <label htmlFor="members" className={labelCls}>People · one per line</label>
+            <textarea id="members" name="members" rows={6} defaultValue={v("members")} placeholder={"Alex\nSam\nPriya"}
+              aria-invalid={!!e.members} aria-describedby="members-err"
+              className={`${field} dot-lines resize-y leading-[1.75rem]`} />
+            <Err id="members-err" msg={e.members} />
+          </div>
+        )}
 
         <details className="group rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4">
           <summary className="cursor-pointer list-none py-3 text-sm font-bold text-ink-soft marker:hidden group-open:text-ink">
@@ -201,6 +228,9 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
                   {text}
                 </label>
               ))}
+              {edit && defaults.visibility === "counts" && snap.visibility === "names" && (
+                <p className="mt-1 text-sm font-medium">Members will see who is free at each time, including people who answered when only counts were shown.</p>
+              )}
             </fieldset>
           </div>
         </details>
@@ -213,10 +243,12 @@ export function CreateForm({ defaults, zones }: { defaults: Values; zones: strin
             <><b className="text-ink">{dates.length}</b> days · <b className="text-ink">{slots > 0 ? slots : "–"}</b> slots a day · <b className="text-ink">{people}</b> {people === 1 ? "person" : "people"}</>
           ) : "Pick dates and days to see the schedule."}
         </p>
+        {!edit && <div className="mt-4"><Turnstile resetKey={state} /></div>}
         {state.message && <p role="alert" className="mt-4 text-sm font-medium text-vermilion">{state.message}</p>}
-        <button type="submit" disabled={pending}
-          className="mt-4 w-full rounded-full bg-indigo px-6 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep disabled:cursor-wait disabled:opacity-70">
-          {pending ? "Creating…" : "Create schedule"}
+        {/* aria-disabled keeps focus on the button while saving; onSubmit above blocks a second submit. */}
+        <button type="submit" aria-disabled={pending}
+          className="mt-4 w-full rounded-full bg-indigo px-6 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep aria-disabled:cursor-wait aria-disabled:opacity-70">
+          {edit ? (pending ? "Saving…" : "Save changes") : pending ? "Creating…" : "Create schedule"}
         </button>
       </aside>
     </form>

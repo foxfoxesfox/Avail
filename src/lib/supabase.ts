@@ -12,6 +12,15 @@ export const supabase = createClient(
   { auth: { persistSession: false } },
 );
 
+// Server-only client with the secret key, for the one call the public key may not make: creating schedules
+// (so the bot check in front of it can't be skipped by calling the database directly).
+// shortcut: falls back to the public key until SUPABASE_SECRET_KEY is set; the lock migration then requires it.
+export const serverOnly = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SECRET_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  { auth: { persistSession: false } },
+);
+
 /** Request-scoped client that carries the signed-in person's session, so functions can check auth.uid(). */
 export async function db() {
   // Session checks read the clock, which prerendering (including runtime prefetches) forbids: wait for the real request.
@@ -49,6 +58,7 @@ export type Schedule = {
   slotMinutes: number;
   timeZone: string;
   deadline: string | null;
+  closed: boolean; // answers closed: the deadline has passed
   showNames: boolean;
   createdAt: string;
   participants: { id: string; name: string; hasPin: boolean; isKey: boolean; claimed: boolean }[];

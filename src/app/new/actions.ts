@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { currentUser, db, supabase } from "@/lib/supabase";
+import { headers } from "next/headers";
+import { currentUser, db, serverOnly } from "@/lib/supabase";
+import { isHuman } from "@/lib/turnstile";
 import { parseScheduleForm, type Field } from "@/lib/schedule-form";
 
 export type CreateState = { errors?: Partial<Record<Field, string>>; message?: string; values?: Record<string, string | string[]> };
@@ -20,8 +22,12 @@ export async function createSchedule(_prev: CreateState, form: FormData): Promis
   const parsed = parseScheduleForm(get, getAll, ZONES);
   if (!parsed.ok) return { errors: parsed.errors, values: echo };
   const v = parsed.value;
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  if (!(await isHuman(get("cf-turnstile-response"), ip))) {
+    return { message: "Couldn't confirm you're a person. Wait a moment, then press Create again.", values: echo };
+  }
 
-  const { data, error } = await supabase.rpc("create_schedule", {
+  const { data, error } = await serverOnly.rpc("create_schedule", {
     p_title: v.title,
     p_start_date: v.startDate,
     p_end_date: v.endDate,

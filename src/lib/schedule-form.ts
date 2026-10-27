@@ -48,10 +48,12 @@ export function parseMembers(text: string): string[] {
   return text.split(/\r?\n|,/).map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean);
 }
 
+/** Editing a live schedule skips the member list: people are edited one by one instead. */
 export function parseScheduleForm(
   get: (name: string) => string,
   getAll: (name: string) => string[],
   validTimeZones: ReadonlySet<string>,
+  { edit = false }: { edit?: boolean } = {},
 ): FormResult {
   const errors: Partial<Record<Field, string>> = {};
 
@@ -92,10 +94,10 @@ export function parseScheduleForm(
   const deadlineLocal = deadlineRaw || null;
   if (deadlineLocal && !LOCAL_DATETIME.test(deadlineLocal)) errors.deadlineLocal = "Pick a date and time.";
 
-  const members = parseMembers(get("members"));
+  const members = edit ? [] : parseMembers(get("members"));
   const seen = new Set<string>();
   const dupes = members.filter((m) => (seen.has(m.toLowerCase()) ? true : (seen.add(m.toLowerCase()), false)));
-  if (!members.length) errors.members = "Add at least one person.";
+  if (!edit && !members.length) errors.members = "Add at least one person.";
   else if (members.length > MAX_MEMBERS) errors.members = `Up to ${MAX_MEMBERS} people per schedule.`;
   else if (dupes.length) errors.members = `Listed twice: ${[...new Set(dupes)].join(", ")}.`;
   else if (members.some((m) => m.length > 40)) errors.members = "Keep each name under 40 characters.";

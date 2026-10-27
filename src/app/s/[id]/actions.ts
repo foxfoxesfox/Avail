@@ -14,10 +14,12 @@ function checkMember(shareId: string, pid: string, pin: string | null) {
   }
 }
 
-/** The member's saved answers as [day, minute, state] rows, or null when the PIN doesn't match. */
-export async function loadMine(shareId: string, pid: string, pin: string | null): Promise<[string, number, number][] | null> {
+/** The member's saved answers as [day, minute, state] rows, null when the PIN doesn't match,
+ *  or "locked" after too many wrong PINs (the name opens again after 15 minutes). */
+export async function loadMine(shareId: string, pid: string, pin: string | null): Promise<[string, number, number][] | null | "locked"> {
   checkMember(shareId, pid, pin);
   const { data, error } = await (await db()).rpc("get_my_availability", { p_share_id: shareId, p_participant: pid, p_pin: pin });
+  if (error?.message.includes("too many wrong PINs")) return "locked";
   if (error) throw error;
   return data;
 }
@@ -41,11 +43,11 @@ export async function saveMine(
       || !days.every((d) => DAY.test(d)) || !minutes.every(Number.isInteger) || !states.every((s) => s === 1 || s === 2)) {
     throw new Error("Invalid request");
   }
-  const { error } = await (await db()).rpc("save_availability", {
+  const { data, error } = await (await db()).rpc("save_availability", {
     p_share_id: shareId, p_participant: pid, p_pin: pin, p_days: days, p_minutes: minutes, p_states: states,
   });
   if (error) console.error("save_availability failed", error);
-  return { ok: !error };
+  return { ok: !error && data !== null }; // null: the PIN or account check failed
 }
 
 export type Totals = {

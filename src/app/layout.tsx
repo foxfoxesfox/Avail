@@ -41,6 +41,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
+        <footer className="border-t border-rule">
+          <div className="mx-auto flex max-w-2xl gap-4 px-5 py-4 text-sm text-ink-soft">
+            <Link href="/privacy" className="underline-offset-4 hover:text-ink hover:underline">Privacy</Link>
+          </div>
+        </footer>
       </body>
     </html>
   );
