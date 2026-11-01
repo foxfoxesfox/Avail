@@ -91,7 +91,7 @@ export async function updateSchedule(shareId: string, token: string | null, _pre
   checkOrganizer(shareId, token);
   const get = (k: string) => String(form.get(k) ?? "");
   const values = Object.fromEntries(
-    ["title", "startDate", "endDate", "startHour", "endHour", "slotMinutes", "timeZone", "deadline", "visibility"].map((k) => [k, get(k)]),
+    ["kind", "title", "startDate", "endDate", "startHour", "endHour", "slotMinutes", "timeZone", "deadline", "visibility", "meetingMinutes", "capacity", "groupSize"].map((k) => [k, get(k)]),
   );
   const echo = { ...values, weekdays: form.getAll("weekdays").map(String) };
   const parsed = parseScheduleForm(get, (k) => form.getAll(k).map(String), new Set([get("timeZone")]), { edit: true });
@@ -100,11 +100,12 @@ export async function updateSchedule(shareId: string, token: string | null, _pre
   const { error } = await (await db()).rpc("update_schedule", {
     p_share_id: shareId, p_token: token, p_title: v.title, p_start_date: v.startDate, p_end_date: v.endDate,
     p_weekdays: v.weekdays, p_day_start_min: v.dayStartMin, p_day_end_min: v.dayEndMin, p_slot_minutes: v.slotMinutes,
-    p_deadline_local: v.deadlineLocal, p_show_names: v.showNames,
+    p_deadline_local: v.deadlineLocal, p_show_names: v.showNames, p_meeting_minutes: v.meetingMinutes, p_capacity: v.capacity,
   });
   if (error) {
     if (error.message.includes("slots can only get smaller")) return { errors: { slotMinutes: "People have answered, so slots can only get smaller (60 → 30 → 15)." }, values: echo };
     if (error.message.includes("does not fit")) return { errors: { slotMinutes: "A confirmed session doesn't line up with that slot size." }, values: echo };
+    if (error.message.includes("schedules_booking_check")) return { errors: { meetingMinutes: "The meeting must be whole slots and fit inside the day's hours." }, values: echo };
     console.error("update_schedule failed", error);
     return { message: "Couldn't save. Nothing was changed; try again.", values: echo };
   }
@@ -179,4 +180,23 @@ export async function deleteSchedule(shareId: string, token: string | null, titl
     return { error: "Couldn't delete the schedule. Nothing was removed; try again." };
   }
   return {};
+}
+
+/** Booking pages: the host's free times as [day, minute, 2] rows (the grid's "free" state). */
+export async function loadOpenTimes(shareId: string, token: string | null): Promise<[string, number, number][]> {
+  checkOrganizer(shareId, token);
+  const { data, error } = await (await db()).rpc("get_open_times", { p_share_id: shareId, p_token: token });
+  if (error) throw error;
+  return data;
+}
+
+export async function saveOpenTimes(shareId: string, token: string | null, rows: { days: string[]; minutes: number[] }): Promise<{ ok: boolean }> {
+  checkOrganizer(shareId, token);
+  const { days, minutes } = rows;
+  if (days.length > 20000 || minutes.length !== days.length || !days.every((d) => DAY.test(d)) || !minutes.every(Number.isInteger)) {
+    throw new Error("Invalid request");
+  }
+  const { error } = await (await db()).rpc("save_open_times", { p_share_id: shareId, p_token: token, p_days: days, p_minutes: minutes });
+  if (error) console.error("save_open_times failed", error);
+  return { ok: !error };
 }

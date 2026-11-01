@@ -6,6 +6,7 @@ export const MAX_MEMBERS = 50;
 export const MAX_DAYS = 183;
 
 export type ScheduleInput = {
+  kind: "dates" | "booking"; // find a time with a group, or a page where people book the host
   title: string;
   startDate: string; // YYYY-MM-DD
   endDate: string;
@@ -17,6 +18,8 @@ export type ScheduleInput = {
   deadlineLocal: string | null; // YYYY-MM-DDTHH:MM, in timeZone
   showNames: boolean;
   members: string[];
+  meetingMinutes: number | null; // booking pages: length of each meeting, a whole number of slots
+  capacity: number | null; // booking pages: people per meeting (1 = one-to-one)
 };
 
 export type Field = keyof ScheduleInput;
@@ -56,6 +59,8 @@ export function parseScheduleForm(
   { edit = false }: { edit?: boolean } = {},
 ): FormResult {
   const errors: Partial<Record<Field, string>> = {};
+  const kind = get("kind") === "booking" ? "booking" : "dates";
+  const booking = kind === "booking";
 
   const title = get("title").trim();
   if (!title) errors.title = "Give the schedule a name.";
@@ -94,21 +99,34 @@ export function parseScheduleForm(
   const deadlineLocal = deadlineRaw || null;
   if (deadlineLocal && !LOCAL_DATETIME.test(deadlineLocal)) errors.deadlineLocal = "Pick a date and time.";
 
-  const members = edit ? [] : parseMembers(get("members"));
+  const members = edit || booking ? [] : parseMembers(get("members"));
   const seen = new Set<string>();
   const dupes = members.filter((m) => (seen.has(m.toLowerCase()) ? true : (seen.add(m.toLowerCase()), false)));
-  if (!edit && !members.length) errors.members = "Add at least one person.";
+  if (!edit && !booking && !members.length) errors.members = "Add at least one person.";
   else if (members.length > MAX_MEMBERS) errors.members = `Up to ${MAX_MEMBERS} people per schedule.`;
   else if (dupes.length) errors.members = `Listed twice: ${[...new Set(dupes)].join(", ")}.`;
   else if (members.some((m) => m.length > 40)) errors.members = "Keep each name under 40 characters.";
+
+  let meetingMinutes: number | null = null, capacity: number | null = null;
+  if (booking) {
+    meetingMinutes = Number(get("meetingMinutes"));
+    if (!Number.isInteger(meetingMinutes) || meetingMinutes < slotMinutes || meetingMinutes % slotMinutes
+        || meetingMinutes > dayEndMin - dayStartMin) {
+      errors.meetingMinutes = "Pick a length that is whole slots and fits inside the day's hours.";
+    }
+    capacity = get("capacity") === "group" ? Number(get("groupSize")) : 1;
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100 || (get("capacity") === "group" && capacity < 2)) {
+      errors.capacity = "A group needs between 2 and 100 people.";
+    }
+  }
 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
     value: {
-      title, startDate, endDate, weekdays, dayStartMin, dayEndMin, slotMinutes, timeZone, deadlineLocal,
-      showNames: get("visibility") !== "counts",
-      members,
+      kind, title, startDate, endDate, weekdays, dayStartMin, dayEndMin, slotMinutes, timeZone, deadlineLocal,
+      showNames: !booking && get("visibility") !== "counts",
+      members, meetingMinutes, capacity,
     },
   };
 }

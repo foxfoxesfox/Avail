@@ -49,7 +49,9 @@ export async function currentUser(): Promise<User | null> {
 export type Schedule = {
   shareId: string;
   title: string;
-  kind: "dates";
+  kind: "dates" | "booking";
+  meetingMinutes: number | null; // booking pages only
+  capacity: number | null; // booking pages only: people per meeting
   startDate: string;
   endDate: string;
   weekdays: number[];

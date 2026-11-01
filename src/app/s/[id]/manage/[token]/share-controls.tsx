@@ -23,29 +23,32 @@ export function ShareControls({ s, token }: { s: Schedule; token: string | null 
   // Read the ref after the flush: while the confirm shows, its trigger isn't mounted.
   const keep = (ref: React.RefObject<HTMLButtonElement | null>) => { flushSync(() => setAsking(null)); ref.current?.focus(); };
 
+  const what = s.kind === "booking" ? "Bookings" : "Answers";
   // After closing or reopening, focus the button that undoes it, and say what happened.
   const [said, setSaid] = useState("");
   const acted = useRef(false);
   useEffect(() => {
     if (!acted.current) return;
     acted.current = false;
-    setSaid(s.closed ? "Answers closed." : "Answers reopened.");
+    setSaid(`${what} ${s.closed ? "closed" : "reopened"}.`);
     (s.closed ? reopenBtn : closeBtn).current?.focus();
-  }, [s.closed]);
+  }, [s.closed, what]);
   const zone = ` (${formatZone(s.timeZone)} time)`;
 
   return (
     <div className="mt-3 grid gap-3 text-sm">
       <p aria-live="polite" className="sr-only">{said}</p>
       {asking === "close" ? (
-        <Confirm busy={pending} yes="Yes, close answers" busyYes="Closing…" onKeep={() => keep(closeBtn)}
-          question="Close answers now? Members can still see the schedule but can't change their times until you reopen."
+        <Confirm busy={pending} yes={`Yes, close ${what.toLowerCase()}`} busyYes="Closing…" onKeep={() => keep(closeBtn)}
+          question={s.kind === "booking"
+            ? "Close bookings now? Nobody can book a time until you reopen."
+            : "Close answers now? Members can still see the schedule but can't change their times until you reopen."}
           onYes={() => start(async () => { acted.current = true; await setAnswersOpen(s.shareId, token, false); setAsking(null); })} />
       ) : (
         <p className={s.closed ? "font-medium" : "text-ink-soft"}>
           {s.closed
-            ? <>Answers are closed{s.deadline ? ` since ${formatDeadline(s.deadline, s.timeZone)}${zone}` : ""}. </>
-            : s.deadline ? <>Answers close {formatDeadline(s.deadline, s.timeZone)}{zone}. </> : <>Answers are open. </>}
+            ? <>{what} are closed{s.deadline ? ` since ${formatDeadline(s.deadline, s.timeZone)}${zone}` : ""}. </>
+            : s.deadline ? <>{what} close {formatDeadline(s.deadline, s.timeZone)}{zone}. </> : <>{what} are open. </>}
           {s.closed ? (
             <button type="button" ref={reopenBtn} aria-disabled={pending}
               onClick={() => { if (pending) return; acted.current = true; start(() => setAnswersOpen(s.shareId, token, true)); }} className={textBtn}>

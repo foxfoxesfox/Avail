@@ -76,3 +76,20 @@ test("editing skips the member list", () => {
   const r2 = parseScheduleForm((k) => f[k] ?? "", (k) => (k === "weekdays" ? ["1"] : []), new Set(["Asia/Singapore"]));
   assert.equal(r2.ok, false);
 });
+
+test("booking pages: no members, meeting length in whole slots, capacity", () => {
+  const base: Record<string, string> = {
+    kind: "booking", title: "Office hours", startDate: "2026-11-02", endDate: "2026-11-13", startHour: "10", endHour: "18",
+    slotMinutes: "30", timeZone: "Asia/Singapore", deadline: "", members: "", meetingMinutes: "120", capacity: "one", groupSize: "10",
+  };
+  const parse = (over: Record<string, string>) =>
+    parseScheduleForm((k) => ({ ...base, ...over })[k] ?? "", (k) => (k === "weekdays" ? ["1", "3"] : []), new Set(["Asia/Singapore"]));
+  const ok = parse({});
+  assert.equal(ok.ok, true);
+  if (ok.ok) assert.deepEqual([ok.value.kind, ok.value.meetingMinutes, ok.value.capacity, ok.value.showNames], ["booking", 120, 1, false]);
+  const group = parse({ capacity: "group", groupSize: "8" });
+  assert.equal(group.ok && group.value.capacity, 8);
+  assert.equal(parse({ meetingMinutes: "45" }).ok, false); // not whole 30-minute slots
+  assert.equal(parse({ meetingMinutes: "600" }).ok, false); // longer than the 8-hour day
+  assert.equal(parse({ capacity: "group", groupSize: "1" }).ok, false);
+});

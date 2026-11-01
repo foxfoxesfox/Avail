@@ -29,6 +29,10 @@ async function Form() {
         deadline: "",
         visibility: "names",
         members: "",
+        kind: "dates",
+        meetingMinutes: "60",
+        capacity: "one",
+        groupSize: "10",
       }}
     />
   );
@@ -37,8 +41,8 @@ async function Form() {
 export default function NewSchedulePage() {
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pt-8 pb-16">
-      <h1 className="text-[1.875rem] leading-tight font-bold tracking-[-0.02em] text-balance">When is everyone free?</h1>
-      <p className="mt-1 mb-7 text-ink-soft">Set the dates and hours, add people, then share one link.</p>
+      <h1 className="text-[1.875rem] leading-tight font-bold tracking-[-0.02em] text-balance">New schedule</h1>
+      <p className="mt-1 mb-7 text-ink-soft">Find a time with a group, or share your free times for anyone to book.</p>
       <Suspense fallback={<div className="dot-grid h-96 rounded-[10px] border border-rule" />}>
         <Form />
       </Suspense>

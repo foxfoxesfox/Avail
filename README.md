@@ -25,7 +25,7 @@ npm run build && npx next start -p 3100   # production build, as used for testin
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public key; every call goes through database functions, never tables |
-| `SUPABASE_SECRET_KEY` | Server-only; used for one call, `create_schedule` |
+| `SUPABASE_SECRET_KEY` | Server-only; used only to create schedules (`create_schedule`, `create_booking_page`) |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile widget key (public) |
 | `TURNSTILE_SECRET_KEY` | Turnstile server check; if unset the check is skipped (local dev only) |
 
@@ -34,7 +34,7 @@ Vercel needs the same variables (Production; Preview optional). For local bot-ch
 ## Database
 - Schema and functions live in [supabase/migrations/](supabase/migrations/), applied with `supabase db push --linked` (the CLI is linked to the hosted project; there is no local database).
 - Every table has row-level security on and **no policies**, and is revoked from the public roles. The app reads and writes only through `SECURITY DEFINER` functions, and each one checks the secret, PIN or account itself. Internal helpers (`organizer_schedule`, `member_ok`, `random_token`, `clean_name`) are not callable from outside.
-- [src/lib/supabase.ts](src/lib/supabase.ts): `supabase` (public key, no session), `db()` (public key plus the visitor's session cookies, so functions can use `auth.uid()`), `serverOnly` (secret key, only for `create_schedule`, so the bot check in front of it can't be skipped).
+- [src/lib/supabase.ts](src/lib/supabase.ts): `supabase` (public key, no session), `db()` (public key plus the visitor's session cookies, so functions can use `auth.uid()`), `serverOnly` (secret key, only for `create_schedule` and `create_booking_page`, so the bot check in front of it can't be skipped).
 
 ## How identity and links work
 | Thing | Where it lives | Notes |
@@ -60,7 +60,7 @@ Organizer access is "the organizer link **or** an account in `schedule_organizer
 - Totals refresh by polling every 10 seconds.
 
 ## Bot protection
-- Creating a schedule: the Turnstile token is checked on the server ([src/lib/turnstile.ts](src/lib/turnstile.ts)) before `create_schedule`, which only the secret key may call.
+- Creating a schedule: the Turnstile token is checked on the server ([src/lib/turnstile.ts](src/lib/turnstile.ts)) before `create_schedule` or `create_booking_page`, which only the secret key may call.
 - Sign-in emails: the token is passed to Supabase, which checks it (CAPTCHA protection is on in Supabase Auth).
 
 ## Supabase settings the app depends on

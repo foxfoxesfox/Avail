@@ -51,3 +51,9 @@ export function toLocalInput(iso: string, timeZone: string) {
   }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
+
+/** A meeting length: "30 min", "1 hr", "1 hr 30 min". */
+export function formatLength(min: number) {
+  const h = Math.floor(min / 60), m = min % 60;
+  return [h && `${h} hr`, m && `${m} min`].filter(Boolean).join(" ");
+}

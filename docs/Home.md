@@ -1,6 +1,6 @@
 ---
 tags: [index]
-updated: 2026-10-23
+updated: 2026-11-01
 ---
 
 # Avail
@@ -13,6 +13,7 @@ Team availability web app: create a schedule, share one link, everyone marks whe
 ## Notes
 - [[Plan]]: competitors and lessons, decisions, phases, expected problems, tech stack, answered questions
 - [[Phase 1]]: build slices and progress
+- [[Booking pages]]: second schedule type (B1 done), where people book your free times
 
 ## Outside the vault
 - `tools/google-sheets/availability.gs`: the Google Sheets generator the team uses today (Extensions → Apps Script)
@@ -21,4 +22,5 @@ Team availability web app: create a schedule, share one link, everyone marks whe
 ## Status
 - [x] Requirements interview and plan draft
 - [x] Answer the open questions ([[Plan#7. Answered questions (Oct 23 2026)]])
-- [ ] Phase 1 build: see [[Phase 1]]
+- [x] Phase 1 build: see [[Phase 1]]
+- [ ] Booking pages: see [[Booking pages]]

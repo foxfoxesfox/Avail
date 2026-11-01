@@ -36,7 +36,7 @@ const MODES: { state: State; label: string }[] = [
   { state: IF_NEEDED, label: "If needed" },
   { state: 0, label: "Clear" },
 ];
-const STATE_WORD = ["not marked", "if needed", "free"];
+const STATE_WORD = ["", "if needed", "free"];
 
 export function Availability({ s, account }: { s: Schedule; account: Account }) {
   const raw = useSyncExternalStore(listen, () => localStorage.getItem(storeKey(s.shareId)), () => null);
@@ -128,40 +128,55 @@ function NamePicker({ s, account, onPick }: { s: Schedule; account: Account; onP
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
-  s: Schedule; me: Me; name: string; hadPin: boolean; account: Account; linked: boolean; onLeave: () => void;
+type Rows = ReturnType<typeof toRows>;
+export type PaintMode = { state: State; label: string };
+
+/** The paint-by-drag time grid with week switching and autosave. Members paint their answers here; hosts their free times. */
+export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly, header, closedNote, blankMeans, children }: {
+  s: Schedule; loadKey: string; load: () => Promise<unknown>; save: (rows: Rows) => Promise<{ ok: boolean }>;
+  modes: PaintMode[]; onLoadFail: () => void; readOnly: boolean; header: React.ReactNode; closedNote: React.ReactNode;
+  blankMeans: string; children?: React.ReactNode;
 }) {
   const weeks = groupWeeks(listDates(s.startDate, s.endDate, s.weekdays));
   const minutes = slotMinutes(s.dayStartMin, s.dayEndMin, s.slotMinutes);
   const [answers, setAnswers] = useState<Map<string, State> | null>(null);
   const [week, setWeek] = useState(0);
-  const [mode, setMode] = useState<State>(FREE);
-  const [save, setSave] = useState<SaveState>("idle");
-  const [hasPin, setHasPin] = useState(hadPin);
+  const [mode, setMode] = useState<State>(modes[0].state);
+  const [save$, setSave] = useState<SaveState>("idle");
   const paint = useRef<State | null>(null);
   const last = useRef<string | null>(null); // where the current drag started
   const dirty = useRef(false);
+  // The latest load/save callbacks, without restarting the effects that use them on every render.
+  const calls = useRef({ load, save, onLoadFail });
+  useEffect(() => { calls.current = { load, save, onLoadFail }; });
 
+  // Reload when an edit changes the grid's shape, so autosave never writes back stale slots.
+  const shape = `${loadKey}|${s.startDate}|${s.endDate}|${s.weekdays.join()}|${s.dayStartMin}|${s.dayEndMin}|${s.slotMinutes}`;
+  const [seenShape, setSeenShape] = useState(shape);
+  if (seenShape !== shape) {
+    setSeenShape(shape);
+    setAnswers(null);
+  }
   useEffect(() => {
-    loadMine(s.shareId, me.pid, me.pin).then(
-      // Wrong or locked PIN: back to the name list, which explains which.
-      (rows) => (Array.isArray(rows) ? setAnswers(fromRows(rows)) : onLeave()),
+    dirty.current = false;
+    calls.current.load().then(
+      (rows) => (Array.isArray(rows) ? setAnswers(fromRows(rows)) : calls.current.onLoadFail()),
       () => setSave("error"));
-  }, [s.shareId, me.pid, me.pin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shape]);
 
   // Autosave shortly after the last change.
   useEffect(() => {
     if (!answers || !dirty.current) return;
     const t = setTimeout(async () => {
       setSave("saving");
-      const r = await saveMine(s.shareId, me.pid, me.pin, toRows(answers)).catch(() => ({ ok: false }));
+      const r = await calls.current.save(toRows(answers)).catch(() => ({ ok: false }));
       setSave(r.ok ? "saved" : "error");
     }, 700);
     return () => clearTimeout(t);
-  }, [answers, s.shareId, me.pid, me.pin]);
+  }, [answers, shape]);
 
   function set(key: string, state: State) {
-    if (s.closed) return; // answers closed: the grid is read-only
+    if (readOnly) return;
     setAnswers((prev) => {
       if (!prev || (prev.get(key) ?? 0) === state) return prev;
       dirty.current = true;
@@ -184,22 +199,12 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
 
   return (
     <section className="mt-6">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 className="text-lg font-bold">Your times, {name}</h2>
-        <button type="button" onClick={onLeave} aria-label={`Not ${name}? Switch person`}
-          className="rounded-full bg-indigo-wash px-3.5 py-1.5 text-sm font-bold text-indigo hover:bg-indigo-wash-hover">
-          Switch person
-        </button>
-      </div>
+      {header}
 
-      {s.closed ? (
-        <p className="mt-4 border-t border-ink pt-3 text-sm font-medium">
-          Answers are closed{s.deadline ? ` since ${formatDeadline(s.deadline, s.timeZone)}` : ""}. These are your saved times; ask the organizer to reopen if you need to change them.
-        </p>
-      ) : (
+      {readOnly ? closedNote : (
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div role="radiogroup" aria-label="Paint with" className="flex gap-1.5">
-          {MODES.map((m) => {
+          {modes.map((m) => {
             const on = mode === m.state;
             return (
               <button key={m.label} type="button" role="radio" aria-checked={on} onClick={() => setMode(m.state)}
@@ -210,8 +215,8 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
             );
           })}
         </div>
-        <p aria-live="polite" className={`text-sm ${save === "error" ? "font-medium text-vermilion" : "text-ink-soft"}`}>
-          {save === "saving" ? "Saving…" : save === "saved" ? "Saved" : save === "error" ? "Not saved" : ""}
+        <p aria-live="polite" className={`text-sm ${save$ === "error" ? "font-medium text-vermilion" : "text-ink-soft"}`}>
+          {save$ === "saving" ? "Saving…" : save$ === "saved" ? "Saved" : save$ === "error" ? "Not saved" : ""}
         </p>
       </div>
       )}
@@ -221,7 +226,8 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
         <div className="text-center" aria-live="polite">
           <p className="text-sm font-bold">{days.length ? formatDateRange(days[0], days[days.length - 1]) : ""}</p>
           <p className="text-xs text-ink-soft">
-            <b className="text-ink">{tally(FREE)}</b> free · <b className="text-ink">{tally(IF_NEEDED)}</b> if needed
+            <b className="text-ink">{tally(FREE)}</b> free
+            {modes.some((m) => m.state === IF_NEEDED) && <> · <b className="text-ink">{tally(IF_NEEDED)}</b> if needed</>}
             {weeks.length > 1 && <> · week {week + 1} of {weeks.length}</>}
           </p>
         </div>
@@ -229,7 +235,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
       </div>
 
       <div
-        className={`mt-3 select-none ${s.closed ? "" : "touch-none"}`}
+        className={`mt-3 select-none ${readOnly ? "" : "touch-none"}`}
         onPointerDown={(e) => {
           const k = keyAt(e.clientX, e.clientY);
           if (!k) return;
@@ -281,8 +287,8 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
                   const st = answers.get(k) ?? 0;
                   return (
                     <td key={k} className="border-l border-rule p-0">
-                      <button type="button" data-slot={k} aria-disabled={s.closed || undefined}
-                        aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${STATE_WORD[st]}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}`}
+                      <button type="button" data-slot={k} aria-disabled={readOnly || undefined}
+                        aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${st ? STATE_WORD[st] : blankMeans}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}`}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(k, st === mode ? 0 : mode); } }}
                         className={`block w-full ${rowH} ${st === FREE ? "bg-indigo" : st === IF_NEEDED ? "if-needed" : "dot-grid"}`}
                         style={{ boxShadow: sessionOutline(s.sessions, date, m, s.slotMinutes) }} />
@@ -295,9 +301,37 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
         </table>
       </div>
       <p className="mt-2 text-xs text-ink-soft">
-        {s.closed ? "" : "Tap or drag to paint. Starting on a painted slot clears it. "}Unpainted means busy. Times in {s.timeZone.replaceAll("_", " ")}.
+        {readOnly ? "" : "Tap or drag to paint. Starting on a painted slot clears it. "}Unpainted means {blankMeans}. Times in {s.timeZone.replaceAll("_", " ")}.
       </p>
+      {children}
+    </section>
+  );
+}
 
+function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
+  s: Schedule; me: Me; name: string; hadPin: boolean; account: Account; linked: boolean; onLeave: () => void;
+}) {
+  const [hasPin, setHasPin] = useState(hadPin);
+  return (
+    <PaintGrid s={s} loadKey={`${s.shareId}:${me.pid}:${me.pin}`} modes={MODES} readOnly={s.closed} blankMeans="busy"
+      load={() => loadMine(s.shareId, me.pid, me.pin)}
+      save={(rows) => saveMine(s.shareId, me.pid, me.pin, rows)}
+      // Wrong or locked PIN: back to the name list, which explains which.
+      onLoadFail={onLeave}
+      header={
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 className="text-lg font-bold">Your times, {name}</h2>
+          <button type="button" onClick={onLeave} aria-label={`Not ${name}? Switch person`}
+            className="rounded-full bg-indigo-wash px-3.5 py-1.5 text-sm font-bold text-indigo hover:bg-indigo-wash-hover">
+            Switch person
+          </button>
+        </div>
+      }
+      closedNote={
+        <p className="mt-4 border-t border-ink pt-3 text-sm font-medium">
+          Answers are closed{s.deadline ? ` since ${formatDeadline(s.deadline, s.timeZone)}` : ""}. These are your saved times; ask the organizer to reopen if you need to change them.
+        </p>
+      }>
       <div className="mt-6 grid gap-3">
         {/* Persistent live region: linking swaps the offer for the "Linked" line, and screen readers hear it. */}
         <div aria-live="polite" className="grid gap-3">
@@ -320,7 +354,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
         </div>
         <CalendarFeed s={s} me={me} />
       </div>
-    </section>
+    </PaintGrid>
   );
 }
 

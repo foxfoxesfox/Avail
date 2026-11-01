@@ -53,6 +53,7 @@ What each app does well (we borrow it), where it falls short (we avoid it), and 
 | Schedule types | Specific dates, recurring weekly, organizer-proposed options (poll) |
 | Calendar busy auto-fill | Later version, optional |
 | Deciding | App ranks the best slots; organizer confirms one or more, or overrides and picks manually |
+| Schedule types | "Find a time" (group poll, today) and "Booking page" (host publishes free times, anyone books). Details in [[Booking pages]] |
 | Key members | Can be marked; suggestions favour slots where they're free |
 | Notifications | Confirmed / changed / cancelled, nudges to non-responders, "someone updated" for organizers, session reminders. Each user chooses which ones they get. |
 | Channels | Calendar (add-to-calendar and a subscription feed), email, web push, Telegram/WhatsApp. Each user chooses in settings. |
@@ -75,6 +76,9 @@ What each app does well (we borrow it), where it falls short (we avoid it), and 
 - Organizer account (email link and Google sign-in) with a "My schedules" list; co-organizers
 - Visibility setting (names or counts only)
 - Edit the setup after creation (extend dates, add or remove people) without losing answers
+
+**Next: booking pages** (planned Nov 1 2026, see [[Booking pages]])
+- A second schedule type: a host publishes their own free times, anyone with the link books a time (1-to-1 by default, or group sessions with a limit); the host sets the meeting length; instant confirmation with email and add-to-calendar
 
 **Phase 2: reuse and notifications**
 - Notification settings page; email notifications; nudges; organizer digest

@@ -30,8 +30,17 @@ async function Content({ params }: { params: PageProps<"/s/[id]">["params"] }) {
         </summary>
         <div className="mt-3"><ScheduleSummary s={s} showPeople={s.showNames} /></div>
       </details>
-      <SessionList s={s} feedHint />
-      <Views s={s} account={{ signedIn: !!user, mine }} />
+      {s.kind === "booking" ? (
+        // shortcut: booking pages can be set up but not booked yet; slice B2 adds the visitor booking view here.
+        <p className="mt-8 border-t border-ink pt-4 text-ink-soft">
+          This booking page isn&apos;t taking bookings yet. Check back soon, or ask the host for another way to book.
+        </p>
+      ) : (
+        <>
+          <SessionList s={s} feedHint />
+          <Views s={s} account={{ signedIn: !!user, mine }} />
+        </>
+      )}
     </>
   );
 }

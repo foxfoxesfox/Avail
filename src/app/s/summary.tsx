@@ -1,5 +1,5 @@
 import type { Schedule } from "@/lib/supabase";
-import { formatDateRange, formatDeadline, formatHours, formatWeekdays, formatZone } from "@/lib/format";
+import { formatDateRange, formatDeadline, formatHours, formatLength, formatWeekdays, formatZone } from "@/lib/format";
 
 // A ruled list set straight on the page, like a planner's info block.
 export function ScheduleSummary({ s, showPeople = true }: { s: Schedule; showPeople?: boolean }) {
@@ -9,8 +9,12 @@ export function ScheduleSummary({ s, showPeople = true }: { s: Schedule; showPeo
     ["Hours", `${formatHours(s.dayStartMin, s.dayEndMin)} · ${s.slotMinutes} min slots`],
     ["Time zone", formatZone(s.timeZone)],
   ];
-  if (s.deadline) rows.push(["Respond by", formatDeadline(s.deadline, s.timeZone)]);
-  if (showPeople) rows.push(["People", s.participants.map((p) => p.name).join(", ")]);
+  if (s.kind === "booking") {
+    rows.push(["Meetings", formatLength(s.meetingMinutes ?? 0)]);
+    rows.push(["Per meeting", s.capacity === 1 ? "One person" : `Up to ${s.capacity} people`]);
+  }
+  if (s.deadline) rows.push([s.kind === "booking" ? "Book until" : "Respond by", formatDeadline(s.deadline, s.timeZone)]);
+  if (showPeople && s.kind !== "booking") rows.push(["People", s.participants.map((p) => p.name).join(", ")]);
 
   return (
     <dl className="border-t border-ink text-base">

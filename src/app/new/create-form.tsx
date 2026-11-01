@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createSchedule, type CreateState } from "./actions";
 import { listDates, parseMembers, SLOT_SIZES } from "@/lib/schedule-form";
-import { formatDateRange, formatHour } from "@/lib/format";
+import { formatDateRange, formatHour, formatLength } from "@/lib/format";
 import { Turnstile } from "../turnstile";
 
 const DAYS = [
@@ -115,6 +115,11 @@ export function CreateForm({ defaults, zones, edit }: {
   const dates = listDates(String(snap.startDate), String(snap.endDate), weekdays);
   const slots = Math.max(0, ((Number(snap.endHour) - Number(snap.startHour)) * 60) / Number(snap.slotMinutes || 60));
   const people = edit ? edit.people : parseMembers(String(snap.members ?? "")).length;
+  const booking = String(snap.kind ?? values.kind) === "booking";
+  const slot = Number(snap.slotMinutes || 60);
+  // Right after choosing Booking page the meeting length field isn't in the snapshot yet.
+  const meeting = Number(snap.meetingMinutes ?? values.meetingMinutes);
+  const lengths = [15, 30, 45, 60, 90, 120, 180, 240].filter((m) => m % slot === 0 && m <= slots * slot);
   const chosen = (d: number) => ((values.weekdays as string[] | undefined) ?? []).includes(String(d));
 
   return (
@@ -122,6 +127,23 @@ export function CreateForm({ defaults, zones, edit }: {
       onSubmit={(ev) => { if (pending) ev.preventDefault(); }}
       className="grid gap-x-10 gap-y-6 md:grid-cols-[minmax(0,1fr)_15rem]">
       <div className="grid content-start gap-5">
+        {edit ? <input type="hidden" name="kind" value={v("kind") || "dates"} /> : (
+          <fieldset>
+            <legend className={labelCls}>What are you scheduling?</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[["dates", "Find a time", "Everyone on a list marks when they're free."],
+                ["booking", "Booking page", "You share your free times; anyone books one."]].map(([val, title, text]) => (
+                <label key={val} className="cursor-pointer">
+                  <input type="radio" name="kind" value={val} defaultChecked={(v("kind") || "dates") === val} className="peer sr-only" />
+                  <span className="block h-full rounded-[10px] border border-rule bg-sheet px-3.5 py-3 transition-colors duration-150 peer-checked:border-indigo peer-checked:bg-indigo-wash peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo">
+                    <span className="block font-bold">{title}</span>
+                    <span className="mt-0.5 block text-sm text-ink-soft">{text}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <div>
           <label htmlFor="title" className={labelCls}>Name</label>
           <input id="title" name="title" defaultValue={v("title")} maxLength={100} autoComplete="off"
@@ -183,6 +205,38 @@ export function CreateForm({ defaults, zones, edit }: {
         <Err id="hours-err" msg={e.dayEndMin} />
         <Err id="slot-err" msg={e.slotMinutes} />
 
+        {booking && (
+          <>
+            <div>
+              <label htmlFor="meetingMinutes" className={labelCls}>Meeting length</label>
+              <select id="meetingMinutes" name="meetingMinutes" defaultValue={v("meetingMinutes")}
+                aria-invalid={!!e.meetingMinutes} aria-describedby="meeting-hint meeting-err" className={field}>
+                {lengths.map((m) => <option key={m} value={m}>{formatLength(m)}</option>)}
+              </select>
+              <p id="meeting-hint" className="mt-1.5 text-sm text-ink-soft">
+                {lengths.includes(meeting) ? `${meeting / slot} slots of ${slot} min each. ` : ""}People book a start time and the whole meeting is held for them.
+              </p>
+              <Err id="meeting-err" msg={e.meetingMinutes} />
+            </div>
+            <fieldset aria-describedby="capacity-err">
+              <legend className={labelCls}>People per meeting</legend>
+              <label className="flex items-center gap-2.5 py-1.5 text-base">
+                <input type="radio" name="capacity" value="one" defaultChecked={v("capacity") !== "group"} className="size-4" />
+                One person · a booked time disappears for everyone else
+              </label>
+              <label className="flex flex-wrap items-center gap-2.5 py-1.5 text-base">
+                <input type="radio" name="capacity" value="group" defaultChecked={v("capacity") === "group"} className="size-4" />
+                A group, up to
+                <input name="groupSize" type="number" inputMode="numeric" min={2} max={100} defaultValue={v("groupSize") || "10"}
+                  aria-label="Most people per meeting" aria-invalid={!!e.capacity}
+                  className="w-20 rounded-[10px] border border-rule bg-sheet px-2.5 py-1.5 text-base aria-[invalid=true]:border-vermilion" />
+                people
+              </label>
+              <Err id="capacity-err" msg={e.capacity} />
+            </fieldset>
+          </>
+        )}
+
         {edit ? (
           <div>
             <p className={labelCls}>Time zone</p>
@@ -199,7 +253,7 @@ export function CreateForm({ defaults, zones, edit }: {
           </div>
         )}
 
-        {!edit && (
+        {!edit && !booking && (
           <div>
             <label htmlFor="members" className={labelCls}>People · one per line</label>
             <textarea id="members" name="members" rows={6} defaultValue={v("members")} placeholder={"Alex\nSam\nPriya"}
@@ -211,16 +265,16 @@ export function CreateForm({ defaults, zones, edit }: {
 
         <details className="group rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4">
           <summary className="cursor-pointer list-none py-3 text-sm font-bold text-ink-soft marker:hidden group-open:text-ink">
-            More options <span className="font-normal">· deadline, privacy</span>
+            More options <span className="font-normal">· {booking ? "booking deadline" : "deadline, privacy"}</span>
           </summary>
           <div className="grid gap-5">
             <div>
-              <label htmlFor="deadline" className={labelCls}>Respond by (optional)</label>
+              <label htmlFor="deadline" className={labelCls}>{booking ? "Take bookings until (optional)" : "Respond by (optional)"}</label>
               <input id="deadline" type="datetime-local" name="deadline" defaultValue={v("deadline")}
                 aria-invalid={!!e.deadlineLocal} aria-describedby="deadline-err" className={field} />
               <Err id="deadline-err" msg={e.deadlineLocal} />
             </div>
-            <fieldset>
+            {!booking && <fieldset>
               <legend className={labelCls}>Members see</legend>
               {[["names", "Who is free"], ["counts", "Only how many are free"]].map(([val, text]) => (
                 <label key={val} className="flex items-center gap-2.5 py-1.5 text-base">
@@ -231,7 +285,7 @@ export function CreateForm({ defaults, zones, edit }: {
               {edit && defaults.visibility === "counts" && snap.visibility === "names" && (
                 <p className="mt-1 text-sm font-medium">Members will see who is free at each time, including people who answered when only counts were shown.</p>
               )}
-            </fieldset>
+            </fieldset>}
           </div>
         </details>
       </div>
@@ -240,7 +294,9 @@ export function CreateForm({ defaults, zones, edit }: {
         <WeekStrip start={String(snap.startDate)} end={String(snap.endDate)} weekdays={weekdays} />
         <p className="mt-3 border-t border-rule pt-3 text-sm text-ink-soft">
           {dates.length ? (
-            <><b className="text-ink">{dates.length}</b> days · <b className="text-ink">{slots > 0 ? slots : "–"}</b> slots a day · <b className="text-ink">{people}</b> {people === 1 ? "person" : "people"}</>
+            booking
+              ? <><b className="text-ink">{dates.length}</b> days · <b className="text-ink">{slots > 0 ? slots : "–"}</b> slots a day · <b className="text-ink">{formatLength(meeting || 0) || "–"}</b> meetings</>
+              : <><b className="text-ink">{dates.length}</b> days · <b className="text-ink">{slots > 0 ? slots : "–"}</b> slots a day · <b className="text-ink">{people}</b> {people === 1 ? "person" : "people"}</>
           ) : "Pick dates and days to see the schedule."}
         </p>
         {!edit && <div className="mt-4"><Turnstile resetKey={state} /></div>}
@@ -248,7 +304,7 @@ export function CreateForm({ defaults, zones, edit }: {
         {/* aria-disabled keeps focus on the button while saving; onSubmit above blocks a second submit. */}
         <button type="submit" aria-disabled={pending}
           className="mt-4 w-full rounded-full bg-indigo px-6 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep aria-disabled:cursor-wait aria-disabled:opacity-70">
-          {edit ? (pending ? "Saving…" : "Save changes") : pending ? "Creating…" : "Create schedule"}
+          {edit ? (pending ? "Saving…" : "Save changes") : pending ? "Creating…" : booking ? "Create booking page" : "Create schedule"}
         </button>
       </aside>
     </form>

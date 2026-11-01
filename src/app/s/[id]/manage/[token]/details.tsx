@@ -54,6 +54,8 @@ export function Details({ s, token }: { s: Schedule; token: string | null }) {
               startHour: String(s.dayStartMin / 60), endHour: String(s.dayEndMin / 60), slotMinutes: String(s.slotMinutes),
               timeZone: s.timeZone, deadline: s.deadline ? toLocalInput(s.deadline, s.timeZone) : "",
               visibility: s.showNames ? "names" : "counts",
+              kind: s.kind, meetingMinutes: String(s.meetingMinutes ?? 60),
+              capacity: (s.capacity ?? 1) > 1 ? "group" : "one", groupSize: String((s.capacity ?? 1) > 1 ? s.capacity : 10),
             }}
             edit={{
               action: (prev, form) => updateSchedule(s.shareId, token, prev, form), people: s.participants.length,
