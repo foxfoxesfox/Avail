@@ -9,9 +9,10 @@ function isoDay(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-// Default dates depend on today, so this part renders per request.
-async function Form() {
+// Default dates depend on today, so this part renders per request. ?kind=booking (from the home page) starts on a booking page.
+async function Form({ searchParams }: { searchParams: PageProps<"/new">["searchParams"] }) {
   await connection();
+  const { kind } = await searchParams;
   const today = new Date();
   const twoWeeks = new Date(today.getTime() + 13 * 86_400_000);
   return (
@@ -29,7 +30,7 @@ async function Form() {
         deadline: "",
         visibility: "names",
         members: "",
-        kind: "dates",
+        kind: kind === "booking" ? "booking" : "dates",
         meetingMinutes: "60",
         capacity: "one",
         groupSize: "10",
@@ -40,13 +41,13 @@ async function Form() {
   );
 }
 
-export default function NewSchedulePage() {
+export default function NewSchedulePage({ searchParams }: PageProps<"/new">) {
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pt-8 pb-16">
       <h1 className="text-[1.875rem] leading-tight font-bold tracking-[-0.02em] text-balance">New schedule</h1>
       <p className="mt-1 mb-7 text-ink-soft">Find a time with a group, or share your free times for anyone to book.</p>
       <Suspense fallback={<div className="dot-grid h-96 rounded-[10px] border border-rule" />}>
-        <Form />
+        <Form searchParams={searchParams} />
       </Suspense>
     </main>
   );

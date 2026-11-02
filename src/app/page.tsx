@@ -27,10 +27,18 @@ export default function Home() {
       <p className="mt-3 max-w-md text-lg text-ink-soft">
         Share one link. Everyone marks their hours. See the best times at a glance.
       </p>
-      <Link href="/new"
-        className="mt-8 self-start rounded-full bg-indigo px-7 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep">
-        Create a schedule
-      </Link>
+      <p className="mt-2 max-w-md text-lg text-ink-soft">Or share your own free times and let anyone book one.</p>
+      {/* The two kinds of schedule: a group poll (the main action) and a booking page. */}
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/new"
+          className="rounded-full bg-indigo px-7 py-4 text-base font-bold text-white transition-colors duration-150 hover:bg-indigo-deep">
+          Find a time
+        </Link>
+        <Link href="/new?kind=booking"
+          className="rounded-full bg-indigo-wash px-7 py-4 text-base font-bold text-indigo transition-colors duration-150 hover:bg-indigo-wash-hover">
+          Make a booking page
+        </Link>
+      </div>
       <Suspense fallback={null}>
         <Lists />
       </Suspense>
