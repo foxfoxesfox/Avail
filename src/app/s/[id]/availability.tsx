@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import type { Schedule } from "@/lib/supabase";
-import { formatDateRange, formatDeadline, formatHour } from "@/lib/format";
+import { formatDateRange, formatDeadline, formatHour, formatZone } from "@/lib/format";
 import { FREE, IF_NEEDED, fromRows, groupWeeks, slotKey, slotMinutes, toRows, weekColumns, type State } from "@/lib/grid";
 import { listDates } from "@/lib/schedule-form";
 import { claimName, feedToken, loadMine, saveMine, setPin, unclaimName } from "./actions";
@@ -132,10 +132,13 @@ type Rows = ReturnType<typeof toRows>;
 export type PaintMode = { state: State; label: string };
 
 /** The paint-by-drag time grid with week switching and autosave. Members paint their answers here; hosts their free times. */
-export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly, header, closedNote, blankMeans, children }: {
+export type BookedRun = { day: string; startMin: number; endMin: number; names: string[] };
+
+export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly, header, closedNote, blankMeans, booked = [], sessionMinutes, children }: {
   s: Schedule; loadKey: string; load: () => Promise<unknown>; save: (rows: Rows) => Promise<{ ok: boolean }>;
   modes: PaintMode[]; onLoadFail: () => void; readOnly: boolean; header: React.ReactNode; closedNote: React.ReactNode;
-  blankMeans: string; children?: React.ReactNode;
+  blankMeans: string; booked?: BookedRun[]; children?: React.ReactNode;
+  sessionMinutes?: number; // group booking pages: a darker rule where each fixed session ends
 }) {
   const weeks = groupWeeks(listDates(s.startDate, s.endDate, s.weekdays));
   const minutes = slotMinutes(s.dayStartMin, s.dayEndMin, s.slotMinutes);
@@ -175,8 +178,16 @@ export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly,
     return () => clearTimeout(t);
   }, [answers, shape]);
 
+  // Booking pages: a booked time can't be cleared from under the visitor; the host cancels the booking first.
+  const [kept, setKept] = useState(false);
+  const isBooked = (key: string) => {
+    const [d, m] = key.split("@");
+    return booked.some((b) => b.day === d && Number(m) >= b.startMin && Number(m) < b.endMin);
+  };
+
   function set(key: string, state: State) {
     if (readOnly) return;
+    if (!state && isBooked(key)) return setKept(true);
     setAnswers((prev) => {
       if (!prev || (prev.get(key) ?? 0) === state) return prev;
       dirty.current = true;
@@ -216,7 +227,7 @@ export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly,
           })}
         </div>
         <p aria-live="polite" className={`text-sm ${save$ === "error" ? "font-medium text-vermilion" : "text-ink-soft"}`}>
-          {save$ === "saving" ? "Saving…" : save$ === "saved" ? "Saved" : save$ === "error" ? "Not saved" : ""}
+          {kept ? "Booked times stay free. Cancel the booking first." : save$ === "saving" ? "Saving…" : save$ === "saved" ? "Saved" : save$ === "error" ? "Not saved" : ""}
         </p>
       </div>
       )}
@@ -240,6 +251,7 @@ export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly,
           const k = keyAt(e.clientX, e.clientY);
           if (!k) return;
           (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+          setKept(false);
           // Starting on a cell that already has this state erases instead.
           paint.current = (answers.get(k) ?? 0) === mode ? 0 : mode;
           last.current = k;
@@ -277,21 +289,30 @@ export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly,
           </thead>
           <tbody>
             {minutes.map((m) => (
-              <tr key={m} className="border-b border-rule">
+              <tr key={m} className={`border-b ${sessionMinutes && (m + s.slotMinutes - s.dayStartMin) % sessionMinutes === 0 ? "border-ink-soft" : "border-rule"}`}>
                 <th scope="row" className="w-14 pr-2 text-right align-top text-xs font-medium text-ink-soft">
-                  {showLabel(m) ? formatHour(m) : ""}
+                  {showLabel(m) || (sessionMinutes && (m - s.dayStartMin) % sessionMinutes === 0) ? formatHour(m) : ""}
                 </th>
                 {cols.map(({ date, active }) => {
                   const k = slotKey(date, m);
                   if (!active) return <td key={k} className={`border-l border-rule bg-paper ${rowH}`} />;
                   const st = answers.get(k) ?? 0;
+                  // Booking pages: who booked this time, outlined (white on free, ink on unpainted) and named in its first cell.
+                  const run = booked.find((b) => b.day === date && m >= b.startMin && m < b.endMin);
+                  const ink = st === FREE ? "#fff" : "var(--color-ink)";
                   return (
                     <td key={k} className="border-l border-rule p-0">
                       <button type="button" data-slot={k} aria-disabled={readOnly || undefined}
-                        aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${st ? STATE_WORD[st] : blankMeans}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}`}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(k, st === mode ? 0 : mode); } }}
-                        className={`block w-full ${rowH} ${st === FREE ? "bg-indigo" : st === IF_NEEDED ? "if-needed" : "dot-grid"}`}
-                        style={{ boxShadow: sessionOutline(s.sessions, date, m, s.slotMinutes) }} />
+                        aria-label={`${DAY_NAMES[dayOf(date).getUTCDay()]} ${dayOf(date).getUTCDate()}, ${formatHour(m)}: ${st ? STATE_WORD[st] : blankMeans}${inSession(s.sessions, date, m) ? ", confirmed session" : ""}${run ? `, booked by ${run.names.join(", ")}` : ""}`}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setKept(false); set(k, st === mode ? 0 : mode); } }}
+                        className={`block w-full ${rowH} ${st === FREE ? "bg-indigo text-white" : st === IF_NEEDED ? "if-needed" : "dot-grid text-ink"}`}
+                        style={{ boxShadow: sessionOutline(s.sessions, date, m, s.slotMinutes) ?? (run && sessionOutline([run], date, m, s.slotMinutes, ink)) }}>
+                        {run && m === run.startMin && (
+                          <span aria-hidden className="block truncate px-1.5 text-left text-xs leading-none font-bold">
+                            {run.names[0]}{run.names.length > 1 ? ` +${run.names.length - 1}` : ""}
+                          </span>
+                        )}
+                      </button>
                     </td>
                   );
                 })}
@@ -301,7 +322,7 @@ export function PaintGrid({ s, loadKey, load, save, modes, onLoadFail, readOnly,
         </table>
       </div>
       <p className="mt-2 text-xs text-ink-soft">
-        {readOnly ? "" : "Tap or drag to paint. Starting on a painted slot clears it. "}Unpainted means {blankMeans}. Times in {s.timeZone.replaceAll("_", " ")}.
+        {readOnly ? "" : "Tap or drag to paint. Starting on a painted slot clears it. "}Unpainted means {blankMeans}. Times are {formatZone(s.timeZone)} time.
       </p>
       {children}
     </section>
@@ -352,7 +373,7 @@ function Grid({ s, me, name, hadPin, account, linked, onLeave }: {
             </>
           )}
         </div>
-        <CalendarFeed s={s} me={me} />
+        <CalendarFeed what="Confirmed sessions" fetchToken={(reset) => feedToken(s.shareId, me.pid, me.pin, reset)} />
       </div>
     </PaintGrid>
   );
@@ -452,7 +473,8 @@ function device() {
 const GOOGLE_HOW = "add it in Google Calendar on a computer (Other calendars, then From URL); it syncs to your phone.";
 
 // The member's private subscription link. Fetched on first open so tokens are only made for people who want one.
-function CalendarFeed({ s, me }: { s: Schedule; me: Me }) {
+/** A private calendar feed panel: what it carries ("Confirmed sessions", "Bookings") and how to get or reset its token. */
+export function CalendarFeed({ what, fetchToken }: { what: string; fetchToken: (reset: boolean) => Promise<string | null> }) {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -477,7 +499,7 @@ function CalendarFeed({ s, me }: { s: Schedule; me: Me }) {
 
   async function load(reset: boolean) {
     setBusy(true);
-    const t = await feedToken(s.shareId, me.pid, me.pin, reset).catch(() => null);
+    const t = await fetchToken(reset).catch(() => null);
     setBusy(false);
     if (!reset) {
       flushSync(() => { if (t) setToken(t); setFailed(!t); });
@@ -502,7 +524,7 @@ function CalendarFeed({ s, me }: { s: Schedule; me: Me }) {
     <details id="calendar-feed" ref={panel} className="scroll-mt-6 rounded-[10px] border border-rule bg-sheet px-3.5 open:pb-4"
       onToggle={(e) => { if (e.currentTarget.open && !token && !busy) load(false); }}>
       <summary className="cursor-pointer list-none py-3 text-sm font-bold text-ink-soft">
-        Calendar feed <span className="font-normal">· confirmed sessions show up in your calendar</span>
+        Calendar feed <span className="font-normal">· {what.toLowerCase()} show up in your calendar</span>
       </summary>
       {!token ? (
         failed ? (
@@ -513,7 +535,7 @@ function CalendarFeed({ s, me }: { s: Schedule; me: Me }) {
         ) : <p className="text-sm text-ink-soft">Getting your link…</p>
       ) : (
         <div className="grid gap-3 text-sm">
-          <p className="text-ink-soft">Confirmed sessions appear in your calendar, and cancelled ones disappear, on their own.</p>
+          <p className="text-ink-soft">{what} appear in your calendar, and cancelled ones disappear, on their own.</p>
           {on === "desktop" && (
             <>
               <div className="grid gap-2 sm:grid-cols-2">

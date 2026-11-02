@@ -15,6 +15,7 @@ export function ScheduleList({ list }: { list: MySchedule[] }) {
             {x.title}
           </Link>
           <span className="text-sm text-ink-soft">
+            {x.kind === "booking" && "Booking page · "}
             {x.role ? `${ROLE[x.role]}${x.name ? `, you're ${x.name}` : ""}` : `Member as ${x.name}`} · {formatDateRange(x.startDate, x.endDate)}
           </span>
         </li>

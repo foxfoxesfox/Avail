@@ -1,5 +1,6 @@
 // Calendar output for confirmed sessions: real instants, add-to-calendar links and .ics text (RFC 5545).
 import type { Session } from "./supabase";
+import { formatDateRange, formatHours, formatZone, toLocalInput } from "./format.ts";
 
 export type CalendarEvent = { title: string; timeZone: string; session: Session };
 
@@ -18,6 +19,16 @@ export function toInstant(day: string, minute: number, timeZone: string) {
   // Second pass corrects the guess when it lands on the other side of a daylight-saving change.
   const guess = wall - offsetMs(wall, timeZone);
   return new Date(wall - offsetMs(guess, timeZone));
+}
+
+/** A schedule's meeting on another zone's clock ("9pm–10pm New York time, Mon 2 Nov 2026"), or null when that clock
+ *  reads the same. For visitors booking from elsewhere. */
+export function onClock(day: string, startMin: number, endMin: number, timeZone: string, viewZone: string) {
+  const [start, end] = [startMin, endMin].map((m) => toLocalInput(toInstant(day, m, timeZone).toISOString(), viewZone));
+  const wall = (t: string) => Number(t.slice(11, 13)) * 60 + Number(t.slice(14, 16));
+  if (start.slice(0, 10) === day && wall(start) === startMin) return null;
+  const date = start.slice(0, 10) === day ? "" : `, ${formatDateRange(start.slice(0, 10), start.slice(0, 10))}`;
+  return `${formatHours(wall(start), wall(end))} ${formatZone(viewZone)} time${date}`;
 }
 
 const stamp = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, ""); // 20261026T020000Z

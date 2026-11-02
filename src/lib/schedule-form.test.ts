@@ -92,4 +92,7 @@ test("booking pages: no members, meeting length in whole slots, capacity", () =>
   assert.equal(parse({ meetingMinutes: "45" }).ok, false); // not whole 30-minute slots
   assert.equal(parse({ meetingMinutes: "600" }).ok, false); // longer than the 8-hour day
   assert.equal(parse({ capacity: "group", groupSize: "1" }).ok, false);
+  const where = parse({ hostName: "  Alex ", location: "" });
+  assert.deepEqual(where.ok && [where.value.hostName, where.value.location], ["Alex", null]); // trimmed; blank means none
+  assert.equal(parse({ location: "x".repeat(301) }).ok, false);
 });

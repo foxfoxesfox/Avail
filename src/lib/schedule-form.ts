@@ -20,6 +20,8 @@ export type ScheduleInput = {
   members: string[];
   meetingMinutes: number | null; // booking pages: length of each meeting, a whole number of slots
   capacity: number | null; // booking pages: people per meeting (1 = one-to-one)
+  hostName: string | null; // booking pages: optional, shown to visitors
+  location: string | null; // booking pages: optional place or video link
 };
 
 export type Field = keyof ScheduleInput;
@@ -107,8 +109,12 @@ export function parseScheduleForm(
   else if (dupes.length) errors.members = `Listed twice: ${[...new Set(dupes)].join(", ")}.`;
   else if (members.some((m) => m.length > 40)) errors.members = "Keep each name under 40 characters.";
 
-  let meetingMinutes: number | null = null, capacity: number | null = null;
+  let meetingMinutes: number | null = null, capacity: number | null = null, hostName: string | null = null, location: string | null = null;
   if (booking) {
+    hostName = get("hostName").trim() || null;
+    if (hostName && hostName.length > 60) errors.hostName = "Keep your name under 60 characters.";
+    location = get("location").trim() || null;
+    if (location && location.length > 300) errors.location = "Keep it under 300 characters.";
     meetingMinutes = Number(get("meetingMinutes"));
     if (!Number.isInteger(meetingMinutes) || meetingMinutes < slotMinutes || meetingMinutes % slotMinutes
         || meetingMinutes > dayEndMin - dayStartMin) {
@@ -126,7 +132,7 @@ export function parseScheduleForm(
     value: {
       kind, title, startDate, endDate, weekdays, dayStartMin, dayEndMin, slotMinutes, timeZone, deadlineLocal,
       showNames: !booking && get("visibility") !== "counts",
-      members, meetingMinutes, capacity,
+      members, meetingMinutes, capacity, hostName, location,
     },
   };
 }

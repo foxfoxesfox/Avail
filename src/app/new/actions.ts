@@ -15,7 +15,7 @@ export async function createSchedule(_prev: CreateState, form: FormData): Promis
   const getAll = (k: string) => form.getAll(k).map(String);
   // Echo the fields back so a failed submit keeps what was typed.
   const values = Object.fromEntries(
-    ["kind", "title", "startDate", "endDate", "startHour", "endHour", "slotMinutes", "timeZone", "deadline", "visibility", "members", "meetingMinutes", "capacity", "groupSize"].map((k) => [k, get(k)]),
+    ["kind", "title", "startDate", "endDate", "startHour", "endHour", "slotMinutes", "timeZone", "deadline", "visibility", "members", "meetingMinutes", "capacity", "groupSize", "hostName", "location"].map((k) => [k, get(k)]),
   );
   const echo = { ...values, weekdays: getAll("weekdays") };
 
@@ -39,7 +39,7 @@ export async function createSchedule(_prev: CreateState, form: FormData): Promis
     p_deadline_local: v.deadlineLocal,
   };
   const { data, error } = v.kind === "booking"
-    ? await serverOnly.rpc("create_booking_page", { ...common, p_meeting_minutes: v.meetingMinutes, p_capacity: v.capacity })
+    ? await serverOnly.rpc("create_booking_page", { ...common, p_meeting_minutes: v.meetingMinutes, p_capacity: v.capacity, p_host_name: v.hostName, p_location: v.location })
     : await serverOnly.rpc("create_schedule", { ...common, p_show_names: v.showNames, p_members: v.members });
   if (error) {
     if (error.message.includes("deadline has passed")) return { errors: { deadlineLocal: "That time has already passed." }, values: echo };

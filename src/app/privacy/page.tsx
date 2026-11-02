@@ -15,11 +15,12 @@ export default function PrivacyPage() {
 
       <h2 className={h2}>What we store</h2>
       <ul className="mt-2 grid gap-1.5 text-ink-soft">
-        <li><b className="text-ink">Schedules:</b> the title, dates, hours, people&apos;s names as the organizer typed them, confirmed sessions with any location, link and notes.</li>
+        <li><b className="text-ink">Schedules:</b> the title, dates, hours, people&apos;s names as the organizer typed them, confirmed sessions with any location, link and notes, and a booking page&apos;s optional host name and place.</li>
         <li><b className="text-ink">Answers:</b> which times each name marked free or if needed, and when they last answered.</li>
+        <li><b className="text-ink">Bookings:</b> on a booking page, the time you booked plus the name and email you gave, which the host can see. Your booking link is stored only in scrambled form.</li>
         <li><b className="text-ink">PINs:</b> only a scrambled (hashed) form, never the PIN itself.</li>
         <li><b className="text-ink">Accounts (optional):</b> your email address, which schedules you organize, and any name you linked to your account.</li>
-        <li><b className="text-ink">Secret links:</b> organizer and invite links are stored only in scrambled form; calendar feed links are stored so you can see yours again.</li>
+        <li><b className="text-ink">Secret links:</b> organizer and invite links are stored only in scrambled form; calendar feed links (a member&apos;s, or a booking page host&apos;s) are stored so you can see yours again.</li>
       </ul>
 
       <h2 className={h2}>On your device</h2>
@@ -32,14 +33,15 @@ export default function PrivacyPage() {
       <p className={p}>
         Anyone with a schedule&apos;s share link can see it and its confirmed sessions. The organizer chooses whether members see who is free or only how
         many. Organizers always see names. A schedule&apos;s organizers see each other&apos;s email addresses.
+        On a booking page, visitors see only which times are open, never who else booked.
       </p>
 
       <h2 className={h2}>Services we use</h2>
       <ul className="mt-2 grid gap-1.5 text-ink-soft">
         <li><b className="text-ink">Supabase</b> stores the data (servers in Singapore) and handles sign-in.</li>
         <li><b className="text-ink">Vercel</b> runs the website.</li>
-        <li><b className="text-ink">Resend</b> sends sign-in emails.</li>
-        <li><b className="text-ink">Cloudflare Turnstile</b> checks that a person, not a bot, is creating schedules or asking for sign-in emails.</li>
+        <li><b className="text-ink">Resend</b> sends sign-in emails and booking emails (confirmations and cancellations).</li>
+        <li><b className="text-ink">Cloudflare Turnstile</b> checks that a person, not a bot, is creating schedules, booking times or asking for sign-in emails.</li>
         <li><b className="text-ink">Google and Microsoft calendars</b> receive a session only when you choose &ldquo;Add to calendar&rdquo; or subscribe to a feed.</li>
       </ul>
 

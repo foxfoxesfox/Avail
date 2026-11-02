@@ -14,8 +14,8 @@ const quiet = "rounded-full bg-indigo-wash px-5 py-3 text-sm font-bold text-indi
 const textBtn = "-my-1.5 inline-block py-1.5 font-medium text-indigo underline underline-offset-4";
 
 /** Who organizes by account, and the ways in: sign in, add via the organizer link, invite, leave, remove, new link. */
-export function Organizers({ shareId, title, token, user, org }: {
-  shareId: string; title: string; token: string | null; user: User | null; org: Org | null;
+export function Organizers({ shareId, title, token, user, org, offerAdd = true }: {
+  shareId: string; title: string; token: string | null; user: User | null; org: Org | null; offerAdd?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -43,7 +43,7 @@ export function Organizers({ shareId, title, token, user, org }: {
   const owner = org?.myRole === "owner";
   return (
     <Section>
-      {!org?.myRole && token && (
+      {!org?.myRole && token && offerAdd && (
         <div className="mb-4">
           <p className="text-sm text-ink-soft">
             Add this schedule to your account (<span className="[overflow-wrap:anywhere]">{user.email}</span>) to open it on any device.

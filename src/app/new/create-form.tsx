@@ -133,10 +133,16 @@ export function CreateForm({ defaults, zones, edit }: {
             <div className="grid gap-2 sm:grid-cols-2">
               {[["dates", "Find a time", "Everyone on a list marks when they're free."],
                 ["booking", "Booking page", "You share your free times; anyone books one."]].map(([val, title, text]) => (
-                <label key={val} className="cursor-pointer">
+                <label key={val} className="group cursor-pointer">
                   <input type="radio" name="kind" value={val} defaultChecked={(v("kind") || "dates") === val} className="peer sr-only" />
                   <span className="block h-full rounded-[10px] border border-rule bg-sheet px-3.5 py-3 transition-colors duration-150 peer-checked:border-indigo peer-checked:bg-indigo-wash peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo">
-                    <span className="block font-bold">{title}</span>
+                    <span className="flex items-start justify-between gap-3 font-bold">
+                      {title}
+                      {/* A radio dot, so the choice isn't shown by colour alone. */}
+                      <span aria-hidden className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border border-rule bg-sheet group-has-[:checked]:border-indigo">
+                        <span className="size-2 rounded-full bg-indigo opacity-0 group-has-[:checked]:opacity-100" />
+                      </span>
+                    </span>
                     <span className="mt-0.5 block text-sm text-ink-soft">{text}</span>
                   </span>
                 </label>
@@ -147,7 +153,7 @@ export function CreateForm({ defaults, zones, edit }: {
         <div>
           <label htmlFor="title" className={labelCls}>Name</label>
           <input id="title" name="title" defaultValue={v("title")} maxLength={100} autoComplete="off"
-            placeholder="Project meetings" aria-invalid={!!e.title} aria-describedby="title-err" className={field} />
+            placeholder={booking ? "Office hours" : "Project meetings"} aria-invalid={!!e.title} aria-describedby="title-err" className={field} />
           <Err id="title-err" msg={e.title} />
         </div>
 
@@ -214,11 +220,11 @@ export function CreateForm({ defaults, zones, edit }: {
                 {lengths.map((m) => <option key={m} value={m}>{formatLength(m)}</option>)}
               </select>
               <p id="meeting-hint" className="mt-1.5 text-sm text-ink-soft">
-                {lengths.includes(meeting) ? `${meeting / slot} slots of ${slot} min each. ` : ""}People book a start time and the whole meeting is held for them.
+                {lengths.includes(meeting) ? `${meeting / slot} ${meeting === slot ? "slot" : "slots"} of ${slot} min${meeting === slot ? "" : " each"}. ` : ""}People book a start time and the whole meeting is held for them.
               </p>
               <Err id="meeting-err" msg={e.meetingMinutes} />
             </div>
-            <fieldset aria-describedby="capacity-err">
+            <fieldset aria-describedby="capacity-hint capacity-err">
               <legend className={labelCls}>People per meeting</legend>
               <label className="flex items-center gap-2.5 py-1.5 text-base">
                 <input type="radio" name="capacity" value="one" defaultChecked={v("capacity") !== "group"} className="size-4" />
@@ -227,13 +233,32 @@ export function CreateForm({ defaults, zones, edit }: {
               <label className="flex flex-wrap items-center gap-2.5 py-1.5 text-base">
                 <input type="radio" name="capacity" value="group" defaultChecked={v("capacity") === "group"} className="size-4" />
                 A group, up to
+                {/* The size box sits inside the label but isn't its control: touching it must still choose "A group". */}
                 <input name="groupSize" type="number" inputMode="numeric" min={2} max={100} defaultValue={v("groupSize") || "10"}
+                  onFocus={(e) => { (e.currentTarget.form?.elements.namedItem("capacity") as RadioNodeList).value = "group"; }}
                   aria-label="Most people per meeting" aria-invalid={!!e.capacity}
                   className="w-20 rounded-[10px] border border-rule bg-sheet px-2.5 py-1.5 text-base aria-[invalid=true]:border-vermilion" />
                 people
               </label>
+              <p id="capacity-hint" className="mt-1 text-sm text-ink-soft">
+                Groups meet in fixed sessions, one after another from the start of the day, and people join one with places left.
+              </p>
               <Err id="capacity-err" msg={e.capacity} />
             </fieldset>
+            <div>
+              <label htmlFor="hostName" className={labelCls}>Your name (optional)</label>
+              <input id="hostName" name="hostName" defaultValue={v("hostName")} maxLength={60} autoComplete="name"
+                aria-invalid={!!e.hostName} aria-describedby="hostName-hint hostName-err" className={field} />
+              <p id="hostName-hint" className="mt-1.5 text-sm text-ink-soft">Shown to people booking, so they know who they&apos;re meeting.</p>
+              <Err id="hostName-err" msg={e.hostName} />
+            </div>
+            <div>
+              <label htmlFor="location" className={labelCls}>Where (optional)</label>
+              <input id="location" name="location" defaultValue={v("location")} maxLength={300} placeholder="A room, an address or a video call link"
+                aria-invalid={!!e.location} aria-describedby="location-hint location-err" className={field} />
+              <p id="location-hint" className="mt-1.5 text-sm text-ink-soft">A link is only shown to people once they book.</p>
+              <Err id="location-err" msg={e.location} />
+            </div>
           </>
         )}
 
@@ -253,8 +278,9 @@ export function CreateForm({ defaults, zones, edit }: {
           </div>
         )}
 
-        {!edit && !booking && (
-          <div>
+        {/* Hidden, not removed, for booking pages: names typed here survive switching back. The server ignores them for bookings. */}
+        {!edit && (
+          <div hidden={booking}>
             <label htmlFor="members" className={labelCls}>People · one per line</label>
             <textarea id="members" name="members" rows={6} defaultValue={v("members")} placeholder={"Alex\nSam\nPriya"}
               aria-invalid={!!e.members} aria-describedby="members-err"
@@ -274,7 +300,7 @@ export function CreateForm({ defaults, zones, edit }: {
                 aria-invalid={!!e.deadlineLocal} aria-describedby="deadline-err" className={field} />
               <Err id="deadline-err" msg={e.deadlineLocal} />
             </div>
-            {!booking && <fieldset>
+            <fieldset hidden={booking}>
               <legend className={labelCls}>Members see</legend>
               {[["names", "Who is free"], ["counts", "Only how many are free"]].map(([val, text]) => (
                 <label key={val} className="flex items-center gap-2.5 py-1.5 text-base">
@@ -285,7 +311,7 @@ export function CreateForm({ defaults, zones, edit }: {
               {edit && defaults.visibility === "counts" && snap.visibility === "names" && (
                 <p className="mt-1 text-sm font-medium">Members will see who is free at each time, including people who answered when only counts were shown.</p>
               )}
-            </fieldset>}
+            </fieldset>
           </div>
         </details>
       </div>

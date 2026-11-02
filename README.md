@@ -9,7 +9,7 @@ Team availability web app: share one link, everyone marks when they're free, and
 - Examples, tests and demo data use generic names only (Alex, Sam, Priya, Jordan, Chris, Mei Lin)
 
 ## Stack
-Next.js (App Router, `src/`, Cache Components on) + TypeScript + Tailwind 4, Supabase (Postgres + Auth), Vercel, Resend (sign-in email over SMTP), Cloudflare Turnstile (bot check).
+Next.js (App Router, `src/`, Cache Components on) + TypeScript + Tailwind 4, Supabase (Postgres + Auth), Vercel, Resend (sign-in email over SMTP, booking emails over its API), Cloudflare Turnstile (bot check).
 
 ## Run locally
 ```
@@ -25,16 +25,19 @@ npm run build && npx next start -p 3100   # production build, as used for testin
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public key; every call goes through database functions, never tables |
-| `SUPABASE_SECRET_KEY` | Server-only; used only to create schedules (`create_schedule`, `create_booking_page`) |
+| `SUPABASE_SECRET_KEY` | Server-only; used only to create schedules (`create_schedule`, `create_booking_page`) and book times (`book_time`) |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile widget key (public) |
 | `TURNSTILE_SECRET_KEY` | Turnstile server check; if unset the check is skipped (local dev only) |
+| `RESEND_API_KEY` | Resend API key (sending access) for booking emails; if unset they're skipped (local dev only) |
+| `SITE_URL` | Optional. Origin used in email links; defaults to `https://avail.foxesvx.dev` (set `http://localhost:3100` to test locally) |
+| `EMAIL_FROM` | Optional. Sender for booking emails; defaults to `Avail <no-reply@auth.foxesvx.dev>` |
 
 Vercel needs the same variables (Production; Preview optional). For local bot-check testing, Cloudflare's test keys work: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA` (always passes) or `2x0000000000000000000000000000000AA` (always fails).
 
 ## Database
 - Schema and functions live in [supabase/migrations/](supabase/migrations/), applied with `supabase db push --linked` (the CLI is linked to the hosted project; there is no local database).
 - Every table has row-level security on and **no policies**, and is revoked from the public roles. The app reads and writes only through `SECURITY DEFINER` functions, and each one checks the secret, PIN or account itself. Internal helpers (`organizer_schedule`, `member_ok`, `random_token`, `clean_name`) are not callable from outside.
-- [src/lib/supabase.ts](src/lib/supabase.ts): `supabase` (public key, no session), `db()` (public key plus the visitor's session cookies, so functions can use `auth.uid()`), `serverOnly` (secret key, only for `create_schedule` and `create_booking_page`, so the bot check in front of it can't be skipped).
+- [src/lib/supabase.ts](src/lib/supabase.ts): `supabase` (public key, no session), `db()` (public key plus the visitor's session cookies, so functions can use `auth.uid()`), `serverOnly` (secret key, only for `create_schedule`, `create_booking_page` and `book_time`, so the bot check in front of it can't be skipped).
 
 ## How identity and links work
 | Thing | Where it lives | Notes |
@@ -42,7 +45,9 @@ Vercel needs the same variables (Production; Preview optional). For local bot-ch
 | Share link `/s/{shareId}` | `schedules.share_id` | Public to whoever has it; organizers can replace it (`reset_share_link`) |
 | Organizer link `/s/{shareId}/manage/{token}` | sha256 of the token in `schedules.admin_token_hash` | Can't be shown again; the owner account can issue a new one (`new_organizer_link`) |
 | Co-organizer invite `/invite/{token}` | sha256 in `organizer_invites` | Owner creates it; one use, 7 days; accepting needs sign-in |
+| Booking link `/s/{shareId}/booked/{token}` | sha256 in `bookings.token_hash` | The visitor's own booking: add to calendar, cancel |
 | Calendar feed `/cal/{token}.ics` | `participants.feed_token` (plain) | Only reveals what the share link shows; members can reset it |
+| Host feed `/cal/{token}.ics` | `schedules.host_feed_token` (plain) | Booking pages: active bookings with names and emails; organizers only, resettable |
 | Picked name (guests) | Browser `localStorage` key `avail:{shareId}` = `{pid, pin}` | Per device. Clearing site data forgets it; answers stay in the database |
 | Organizer links opened (guests) | Browser `localStorage` key `avail:organizer` | Shown on the home page as "Organizer links on this device" |
 | PIN | bcrypt hash in `participants.pin_hash` | 5 wrong PINs lock the name for 15 minutes (`member_ok`) |
@@ -59,8 +64,11 @@ Organizer access is "the organizer link **or** an account in `schedule_organizer
 - Closing answers sets the deadline to now; reopening clears it. The database refuses saves after the deadline.
 - Totals refresh by polling every 10 seconds.
 
+## Booking emails
+Sent after the response with `after()` ([src/lib/booking-notify.ts](src/lib/booking-notify.ts)), texts in [src/lib/booking-emails.ts](src/lib/booking-emails.ts). Booking: the visitor gets a confirmation with their private link and an .ics file; the host gets "New booking" (reply goes to the visitor). Visitor cancels: the host is told. Host cancels: the visitor is told. Hosts are emailed only when they organize with an account (`booking_notice` returns organizers' account emails, secret key only). A failed email is logged and never undoes the booking.
+
 ## Bot protection
-- Creating a schedule: the Turnstile token is checked on the server ([src/lib/turnstile.ts](src/lib/turnstile.ts)) before `create_schedule` or `create_booking_page`, which only the secret key may call.
+- Creating a schedule or booking a time: the Turnstile token is checked on the server ([src/lib/turnstile.ts](src/lib/turnstile.ts)) before `create_schedule`, `create_booking_page` or `book_time`, which only the secret key may call.
 - Sign-in emails: the token is passed to Supabase, which checks it (CAPTCHA protection is on in Supabase Auth).
 
 ## Supabase settings the app depends on

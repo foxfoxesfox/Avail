@@ -33,6 +33,8 @@ async function Form() {
         meetingMinutes: "60",
         capacity: "one",
         groupSize: "10",
+        hostName: "",
+        location: "",
       }}
     />
   );

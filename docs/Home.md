@@ -13,7 +13,7 @@ Team availability web app: create a schedule, share one link, everyone marks whe
 ## Notes
 - [[Plan]]: competitors and lessons, decisions, phases, expected problems, tech stack, answered questions
 - [[Phase 1]]: build slices and progress
-- [[Booking pages]]: second schedule type (B1 done), where people book your free times
+- [[Booking pages]]: second schedule type (B1–B5 done; small design items left), where people book your free times
 
 ## Outside the vault
 - `tools/google-sheets/availability.gs`: the Google Sheets generator the team uses today (Extensions → Apps Script)

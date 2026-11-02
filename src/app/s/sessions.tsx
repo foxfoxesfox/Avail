@@ -49,7 +49,8 @@ export function SessionList({ s, onCancel, feedHint = false }: {
             </div>
             {onCancel && (asking === x.id ? (
               // Keep first and full size, matching the shared two-step confirm.
-              <div className="flex shrink-0 flex-wrap justify-end gap-3">
+              <div role="group" aria-label={`Cancel the session on ${formatDateRange(x.day, x.day)}, ${formatHours(x.startMin, x.endMin)}?`}
+                className="flex shrink-0 flex-wrap justify-end gap-3">
                 <button type="button" autoFocus
                   onClick={() => { flushSync(() => setAsking(null)); document.getElementById(`cancel-${x.id}`)?.focus(); }}
                   className="rounded-full bg-indigo-wash px-5 py-3 text-sm font-bold text-indigo hover:bg-indigo-wash-hover">
@@ -87,7 +88,9 @@ export function SessionList({ s, onCancel, feedHint = false }: {
 const calLink = "font-medium text-indigo underline underline-offset-4 hover:text-indigo-deep";
 
 // Links stay text-weight, with padding that lifts each tap area to 32px; screen readers hear which session and new tabs.
-function AddToCalendar({ s, x }: { s: { shareId: string; title: string; timeZone: string }; x: Session }) {
+export function AddToCalendar({ s, x, ics = `/s/${s.shareId}/event/${x.id}` }: {
+  s: { shareId: string; title: string; timeZone: string }; x: Session; ics?: string;
+}) {
   const e = { title: s.title, timeZone: s.timeZone, session: x };
   const when = <span className="sr-only"> for {formatDateRange(x.day, x.day)}, {formatHours(x.startMin, x.endMin)}</span>;
   const newTab = <span className="sr-only"> (opens in a new tab)</span>;
@@ -97,7 +100,7 @@ function AddToCalendar({ s, x }: { s: { shareId: string; title: string; timeZone
       <span className="basis-full text-ink-soft sm:basis-auto">Add to calendar:</span>
       <a href={googleLink(e)} target="_blank" rel="noopener noreferrer" className={link}>Google{when}{newTab}</a>
       <a href={outlookLink(e)} target="_blank" rel="noopener noreferrer" className={link}>Outlook.com{when}{newTab}</a>
-      <a href={`/s/${s.shareId}/event/${x.id}`} className={link}>Apple / other (.ics){when}</a>
+      <a href={ics} className={link}>Apple / other (.ics){when}</a>
     </p>
   );
 }
@@ -106,11 +109,12 @@ function AddToCalendar({ s, x }: { s: { shareId: string; title: string; timeZone
 export const inSession = (sessions: Session[], day: string, minute: number) =>
   sessions.some((x) => x.day === day && minute >= x.startMin && minute < x.endMin);
 
-/** Seal outline drawn once around a session's run of cells: sides on every cell, top on the first, bottom on the last. */
-export function sessionOutline(sessions: Session[], day: string, minute: number, step: number) {
+/** Outline drawn once around a run of cells (a confirmed session in seal, or a booking): sides on every cell, top on the first,
+ *  bottom on the last. */
+export function sessionOutline(sessions: Pick<Session, "day" | "startMin" | "endMin">[], day: string, minute: number, step: number,
+  c = "var(--color-seal)") {
   const x = sessions.find((v) => v.day === day && minute >= v.startMin && minute < v.endMin);
   if (!x) return undefined;
-  const c = "var(--color-seal)";
   return [`inset 2px 0 0 ${c}`, `inset -2px 0 0 ${c}`, minute === x.startMin && `inset 0 2px 0 ${c}`, minute + step >= x.endMin && `inset 0 -2px 0 ${c}`]
     .filter(Boolean).join(", ");
 }

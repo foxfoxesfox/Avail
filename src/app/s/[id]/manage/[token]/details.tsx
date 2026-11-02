@@ -56,6 +56,7 @@ export function Details({ s, token }: { s: Schedule; token: string | null }) {
               visibility: s.showNames ? "names" : "counts",
               kind: s.kind, meetingMinutes: String(s.meetingMinutes ?? 60),
               capacity: (s.capacity ?? 1) > 1 ? "group" : "one", groupSize: String((s.capacity ?? 1) > 1 ? s.capacity : 10),
+              hostName: s.hostName ?? "", location: s.location ?? "",
             }}
             edit={{
               action: (prev, form) => updateSchedule(s.shareId, token, prev, form), people: s.participants.length,

@@ -51,6 +51,20 @@ const SECTIONS: { title: string; items: QA[] }[] = [
     ],
   },
   {
+    title: "Booking pages",
+    items: [
+      { q: "What's a booking page?", a: "A page of your own free times. Share its link and anyone can book a time with you, like office hours or interviews. Pick “Booking page” when you make a new schedule." },
+      { q: "How do people book?", a: "They open the link, tap a shaded start time (the whole meeting fills in), and enter their name and email. No account needed. They get an email with a private link to add it to their calendar or cancel." },
+      { q: "Can more than one person book the same time?", a: "Only if you choose a group under “People per meeting”. Groups meet in fixed sessions, one after another from the start of the day (10am, 11am, 12pm… for 1-hour sessions), and each session stays open until it's full. A session opens only if you're free for all of it. With one person per meeting, a booked time disappears for everyone else." },
+      {
+        q: "Where do I see bookings?",
+        a: "On your organizer page, under Bookings. You can cancel any upcoming one (they're emailed), and subscribe to the calendar feed to see bookings in your calendar. To get an email for each new booking or cancellation, sign in and add the page to your schedules. A video link you add under “Where” only shows to people once they book.",
+      },
+      { q: "What if I change my free times after people book?", a: "Their bookings stay. Any that no longer fit your free times are marked on the organizer page, so you can cancel them if you need to." },
+      { q: "How do I stop taking bookings?", a: "Use “Close now” under the share link, or set a date under More options when you edit. You can reopen at any time." },
+    ],
+  },
+  {
     title: "Accounts and privacy",
     items: [
       {

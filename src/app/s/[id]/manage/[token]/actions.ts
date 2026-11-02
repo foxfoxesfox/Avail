@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { db } from "@/lib/supabase";
+import { notifyBooking } from "@/lib/booking-notify";
 import { MAX_MEMBERS, parseMembers, parseScheduleForm } from "@/lib/schedule-form";
 import type { CreateState } from "@/app/new/actions";
 
@@ -91,7 +92,7 @@ export async function updateSchedule(shareId: string, token: string | null, _pre
   checkOrganizer(shareId, token);
   const get = (k: string) => String(form.get(k) ?? "");
   const values = Object.fromEntries(
-    ["kind", "title", "startDate", "endDate", "startHour", "endHour", "slotMinutes", "timeZone", "deadline", "visibility", "meetingMinutes", "capacity", "groupSize"].map((k) => [k, get(k)]),
+    ["kind", "title", "startDate", "endDate", "startHour", "endHour", "slotMinutes", "timeZone", "deadline", "visibility", "meetingMinutes", "capacity", "groupSize", "hostName", "location"].map((k) => [k, get(k)]),
   );
   const echo = { ...values, weekdays: form.getAll("weekdays").map(String) };
   const parsed = parseScheduleForm(get, (k) => form.getAll(k).map(String), new Set([get("timeZone")]), { edit: true });
@@ -101,6 +102,8 @@ export async function updateSchedule(shareId: string, token: string | null, _pre
     p_share_id: shareId, p_token: token, p_title: v.title, p_start_date: v.startDate, p_end_date: v.endDate,
     p_weekdays: v.weekdays, p_day_start_min: v.dayStartMin, p_day_end_min: v.dayEndMin, p_slot_minutes: v.slotMinutes,
     p_deadline_local: v.deadlineLocal, p_show_names: v.showNames, p_meeting_minutes: v.meetingMinutes, p_capacity: v.capacity,
+    // Empty clears them; null (group schedules) leaves them alone.
+    p_host_name: v.kind === "booking" ? v.hostName ?? "" : null, p_location: v.kind === "booking" ? v.location ?? "" : null,
   });
   if (error) {
     if (error.message.includes("slots can only get smaller")) return { errors: { slotMinutes: "People have answered, so slots can only get smaller (60 → 30 → 15)." }, values: echo };
@@ -199,4 +202,21 @@ export async function saveOpenTimes(shareId: string, token: string | null, rows:
   const { error } = await (await db()).rpc("save_open_times", { p_share_id: shareId, p_token: token, p_days: days, p_minutes: minutes });
   if (error) console.error("save_open_times failed", error);
   return { ok: !error };
+}
+
+export async function hostCancelBooking(shareId: string, token: string | null, bookingId: string) {
+  checkOrganizer(shareId, token);
+  if (!UUID.test(bookingId)) throw new Error("Invalid request");
+  const { data, error } = await (await db()).rpc("host_cancel_booking", { p_share_id: shareId, p_token: token, p_booking: bookingId });
+  if (error) throw error;
+  if (data) notifyBooking({ hostCancelled: bookingId });
+  refresh();
+}
+
+/** The host's private calendar feed token for a booking page; reset issues a new one. */
+export async function hostFeedToken(shareId: string, token: string | null, reset: boolean): Promise<string | null> {
+  checkOrganizer(shareId, token);
+  const { data, error } = await (await db()).rpc("get_host_feed_token", { p_share_id: shareId, p_token: token, p_reset: reset });
+  if (error) throw error;
+  return data;
 }

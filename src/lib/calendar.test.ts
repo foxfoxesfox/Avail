@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { googleLink, outlookLink, toICS, toInstant, type CalendarEvent } from "./calendar.ts";
+import { googleLink, onClock, outlookLink, toICS, toInstant, type CalendarEvent } from "./calendar.ts";
+
+test("onClock shows a meeting on another zone's clock, with the date when it differs", () => {
+  assert.equal(onClock("2026-11-03", 600, 660, "Asia/Singapore", "Asia/Singapore"), null);
+  assert.equal(onClock("2026-11-03", 600, 660, "Asia/Singapore", "Europe/London"), "2am–3am London time");
+  assert.equal(onClock("2026-11-03", 600, 660, "Asia/Singapore", "America/New_York"), "9pm–10pm New York time, Mon 2 Nov 2026");
+  assert.equal(onClock("2026-11-03", 600, 660, "Asia/Singapore", "Asia/Kolkata"), "7:30am–8:30am Kolkata time");
+});
 
 test("toInstant converts schedule wall time to UTC", () => {
   assert.equal(toInstant("2026-10-26", 600, "Asia/Singapore").toISOString(), "2026-10-26T02:00:00.000Z");

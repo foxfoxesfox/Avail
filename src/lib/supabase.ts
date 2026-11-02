@@ -52,6 +52,9 @@ export type Schedule = {
   kind: "dates" | "booking";
   meetingMinutes: number | null; // booking pages only
   capacity: number | null; // booking pages only: people per meeting
+  hostName: string | null; // booking pages only: shown to visitors as "with …"
+  location: string | null; // booking pages only: a place or a video link (the public view leaves out links)
+  online?: boolean; // booking pages: the place is a link, given to visitors once they book
   startDate: string;
   endDate: string;
   weekdays: number[];
@@ -90,7 +93,8 @@ export async function getScheduleAsOrganizer(shareId: string, token: string | nu
   return data;
 }
 
-export type Feed = { title: string; timeZone: string; name: string; sessions: Session[] };
+// A member feed has sessions; a host feed has bookings, each with its own title (who booked).
+export type Feed = { title: string; timeZone: string; name: string | null; sessions: (Session & { title?: string })[] };
 
 export async function getFeed(token: string): Promise<Feed | null> {
   const { data, error } = await supabase.rpc("get_feed", { p_token: token });
@@ -106,7 +110,7 @@ export async function getOrganizers(shareId: string, token: string | null): Prom
   return data;
 }
 
-export type MySchedule = { shareId: string; title: string; startDate: string; endDate: string; role: "owner" | "co" | null; name: string | null };
+export type MySchedule = { shareId: string; title: string; kind: "dates" | "booking"; startDate: string; endDate: string; role: "owner" | "co" | null; name: string | null };
 
 export async function getMySchedules(): Promise<MySchedule[]> {
   const { data, error } = await (await db()).rpc("my_schedules");
@@ -123,6 +127,29 @@ export async function getMyParticipant(shareId: string): Promise<string | null> 
 /** A co-organizer invite that can still be accepted, or null (used, expired or unknown). */
 export async function getInvite(token: string): Promise<{ title: string; shareId: string } | null> {
   const { data, error } = await supabase.rpc("get_invite", { p_token: token });
+  if (error) throw error;
+  return data;
+}
+
+export type Booking = {
+  id: string; shareId: string; title: string; timeZone: string;
+  day: string; startMin: number; endMin: number; name: string; email: string; cancelled: boolean;
+  cancelledBy: "visitor" | "host" | null; hostName: string | null; location: string | null;
+  visitorZone: string | null; // the visitor's browser zone when they booked
+};
+
+/** A visitor's booking, by the secret in its private link. */
+export async function getBooking(token: string): Promise<Booking | null> {
+  const { data, error } = await supabase.rpc("get_booking", { p_token: token });
+  if (error) throw error;
+  return data;
+}
+
+export type BookingRow = { id: string; day: string; startMin: number; endMin: number; name: string; email: string; createdAt: string; cancelled: boolean; cancelledBy: "visitor" | "host" | null; past: boolean; outside: boolean };
+
+/** Every booking on a booking page, for its organizers. */
+export async function getBookings(shareId: string, token: string | null): Promise<BookingRow[]> {
+  const { data, error } = await (await db()).rpc("get_bookings", { p_share_id: shareId, p_token: token });
   if (error) throw error;
   return data;
 }
