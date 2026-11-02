@@ -46,6 +46,12 @@ export async function currentUser(): Promise<User | null> {
   return c ? { id: c.sub, email: String(c.email ?? "") } : null;
 }
 
+/** The name saved on the signed-in person's profile, or "". Asked of the auth server, so a name saved a moment ago shows. */
+export async function currentName(): Promise<string> {
+  const { data } = await (await db()).auth.getUser();
+  return String(data.user?.user_metadata?.name ?? "");
+}
+
 export type Schedule = {
   shareId: string;
   title: string;

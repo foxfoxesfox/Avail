@@ -17,9 +17,9 @@ export default function PrivacyPage() {
       <ul className="mt-2 grid gap-1.5 text-ink-soft">
         <li><b className="text-ink">Schedules:</b> the title, dates, hours, people&apos;s names as the organizer typed them, confirmed sessions with any location, link and notes, and a booking page&apos;s optional host name and place.</li>
         <li><b className="text-ink">Answers:</b> which times each name marked free or if needed, and when they last answered.</li>
-        <li><b className="text-ink">Bookings:</b> on a booking page, the time you booked plus the name and email you gave, which the host can see. Your booking link is stored only in scrambled form.</li>
+        <li><b className="text-ink">Bookings:</b> on a booking page, the time you booked plus the name and email you gave, which the host can see, and your device&apos;s time zone so your booking page and emails can show the time on your clock. Your booking link is stored only in scrambled form.</li>
         <li><b className="text-ink">PINs:</b> only a scrambled (hashed) form, never the PIN itself.</li>
-        <li><b className="text-ink">Accounts (optional):</b> your email address, which schedules you organize, and any name you linked to your account.</li>
+        <li><b className="text-ink">Accounts (optional):</b> your email address, the name you save on your profile, which schedules you organize, and any name you linked to your account.</li>
         <li><b className="text-ink">Secret links:</b> organizer and invite links are stored only in scrambled form; calendar feed links (a member&apos;s, or a booking page host&apos;s) are stored so you can see yours again.</li>
       </ul>
 
@@ -55,7 +55,8 @@ export default function PrivacyPage() {
       <ul className="mt-2 grid gap-1.5 text-ink-soft">
         <li>Add a PIN or link your name to your account so only you can change your times.</li>
         <li>Reset your calendar feed link, or unlink your name, at any time.</li>
-        <li>Ask us to delete your account, a schedule you organize, or your name and answers: email <a href={`mailto:${CONTACT}`} className="font-medium text-indigo underline underline-offset-4">{CONTACT}</a>.</li>
+        <li>Delete your account yourself from Your profile (the round button with your initial, top right).</li>
+        <li>Ask us to delete a schedule you organize, or your name and answers: email <a href={`mailto:${CONTACT}`} className="font-medium text-indigo underline underline-offset-4">{CONTACT}</a>.</li>
       </ul>
 
       <h2 className={h2}>Contact</h2>

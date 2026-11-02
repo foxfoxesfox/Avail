@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { CreateForm } from "./create-form";
+import { currentName } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "New schedule" };
 
@@ -12,7 +13,7 @@ function isoDay(d: Date) {
 // Default dates depend on today, so this part renders per request. ?kind=booking (from the home page) starts on a booking page.
 async function Form({ searchParams }: { searchParams: PageProps<"/new">["searchParams"] }) {
   await connection();
-  const { kind } = await searchParams;
+  const [{ kind }, name] = await Promise.all([searchParams, currentName()]);
   const today = new Date();
   const twoWeeks = new Date(today.getTime() + 13 * 86_400_000);
   return (
@@ -34,7 +35,7 @@ async function Form({ searchParams }: { searchParams: PageProps<"/new">["searchP
         meetingMinutes: "60",
         capacity: "one",
         groupSize: "10",
-        hostName: "",
+        hostName: name, // from your profile, so booking pages name the host without retyping
         location: "",
       }}
     />
