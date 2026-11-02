@@ -10,9 +10,10 @@ export async function AccountSlot() {
   const user = await currentUser();
   if (!user) return <Link href="/sign-in" className={link}>Sign in</Link>;
   return (
-    <Link href="/account" className={`${link} group flex items-center gap-2`}>
-      Your schedules<span className="sr-only"> (signed in)</span>
-      <span aria-hidden className="grid size-7 place-items-center rounded-full bg-indigo-wash text-xs font-bold text-indigo no-underline transition-colors duration-150 group-hover:bg-indigo-wash-hover">
+    // Only the words underline on hover; the initial changes fill instead.
+    <Link href="/account" className="group flex items-center gap-2 text-sm font-medium text-ink-soft hover:text-ink">
+      <span className="underline-offset-4 group-hover:underline">Your schedules</span><span className="sr-only"> (signed in)</span>
+      <span aria-hidden className="grid size-7 place-items-center rounded-full bg-indigo-wash text-xs font-bold text-indigo transition-colors duration-150 group-hover:bg-indigo-wash-hover">
         {(user.email ?? "?").charAt(0).toUpperCase()}
       </span>
     </Link>
