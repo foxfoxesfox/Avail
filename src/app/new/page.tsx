@@ -13,11 +13,14 @@ function isoDay(d: Date) {
 // Default dates depend on today, so this part renders per request. ?kind=booking (from the home page) starts on a booking page.
 async function Form({ searchParams }: { searchParams: PageProps<"/new">["searchParams"] }) {
   await connection();
-  const [{ kind }, name] = await Promise.all([searchParams, currentName()]);
+  const [{ kind: asked }, name] = await Promise.all([searchParams, currentName()]);
+  const kind = asked === "booking" ? "booking" : "dates";
   const today = new Date();
   const twoWeeks = new Date(today.getTime() + 13 * 86_400_000);
   return (
-    <CreateForm
+    // Next keeps a page's state between visits, and /new and /new?kind=booking are the same page: a fresh form per kind
+    // makes each home-page button open its own kind.
+    <CreateForm key={kind}
       zones={[...Intl.supportedValuesOf("timeZone"), "UTC"]}
       defaults={{
         title: "",
@@ -31,7 +34,7 @@ async function Form({ searchParams }: { searchParams: PageProps<"/new">["searchP
         deadline: "",
         visibility: "names",
         members: "",
-        kind: kind === "booking" ? "booking" : "dates",
+        kind,
         meetingMinutes: "60",
         capacity: "one",
         groupSize: "10",
