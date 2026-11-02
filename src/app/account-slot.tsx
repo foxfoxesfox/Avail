@@ -3,19 +3,19 @@ import { currentUser } from "@/lib/supabase";
 
 const link = "text-sm font-medium text-ink-soft underline-offset-4 hover:text-ink hover:underline";
 
-// Top bar: "Sign in" for guests; once signed in, "Your schedules" with the account's initial, so being signed in shows
-// at a glance. The full email stays off the header (it ends up in screenshots shared to group chats); Your schedules
-// says which account it is.
+// Top bar: "Sign in" for guests; once signed in, "Your schedules" and a round profile button with the account's initial,
+// so being signed in shows at a glance. The full email stays off the header (it ends up in screenshots shared to group
+// chats); the profile page says which account it is.
 export async function AccountSlot() {
   const user = await currentUser();
   if (!user) return <Link href="/sign-in" className={link}>Sign in</Link>;
   return (
-    // Only the words underline on hover; the initial changes fill instead.
-    <Link href="/account" className="group flex items-center gap-2 text-sm font-medium text-ink-soft hover:text-ink">
-      <span className="underline-offset-4 group-hover:underline">Your schedules</span><span className="sr-only"> (signed in)</span>
-      <span aria-hidden className="grid size-7 place-items-center rounded-full bg-indigo-wash text-xs font-bold text-indigo transition-colors duration-150 group-hover:bg-indigo-wash-hover">
+    <>
+      <Link href="/account" className={link}>Your schedules</Link>
+      <Link href="/profile" aria-label="Your profile"
+        className="grid size-8 place-items-center rounded-full bg-indigo-wash text-sm font-bold text-indigo transition-colors duration-150 hover:bg-indigo-wash-hover">
         {(user.email ?? "?").charAt(0).toUpperCase()}
-      </span>
-    </Link>
+      </Link>
+    </>
   );
 }
